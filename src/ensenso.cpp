@@ -208,10 +208,11 @@ void Ensenso::loadPointCloud(
 		}
 
 		// Copy point cloud and convert in meters
-		cloud.header.stamp = ensensoStampToPcl(timestamp);
-		cloud.width        = width;
-		cloud.height       = height;
-		cloud.is_dense     = false;
+		cloud.header.stamp    = ensensoStampToPcl(timestamp);
+		cloud.header.frame_id = "/camera_link";
+		cloud.width           = width;
+		cloud.height          = height;
+		cloud.is_dense        = false;
 		cloud.resize(height * width);
 
 		// Copy data in point cloud (and convert milimeters in meters)
