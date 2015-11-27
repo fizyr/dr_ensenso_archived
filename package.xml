@@ -11,6 +11,7 @@
 	<buildtool_depend>catkin</buildtool_depend>
 	<depend>roscpp</depend>
 	<depend>dr_base</depend>
+	<depend>dr_log</depend>
 	<depend>dr_util</depend>
 	<depend>dr_camera</depend>
 	<depend>dr_uv_mapping</depend>

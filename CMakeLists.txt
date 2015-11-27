@@ -4,6 +4,7 @@ project(dr_ensenso)
 find_package(catkin REQUIRED COMPONENTS
 	roscpp
 	dr_base
+	dr_log
 	dr_util
 	dr_camera
 	dr_uv_mapping

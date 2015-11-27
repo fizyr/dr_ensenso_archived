@@ -29,6 +29,9 @@ public:
 	/// Loads the depth image to depth.
 	void loadDepth(cv::Mat & depth) override;
 
+	/// Loads the camera parameters from a JSON file.
+	void loadParameters(std::string const parameters_file);
+
 	/**
 	 * Loads the pointcloud from depth in the region of interest.
 	 * \param depth The depth image.
