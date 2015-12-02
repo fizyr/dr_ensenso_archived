@@ -21,7 +21,7 @@ protected:
 		return ensenso;
 	}
 
-	virtual std::shared_ptr<UvMappingSource> getUvMappingSource(uint8_t id) const {
+	virtual std::shared_ptr<PointCloudCamera> getPointCloudCamera(uint8_t id) const {
 		(void) id;
 		return ensenso;
 	}

@@ -7,7 +7,6 @@ find_package(catkin REQUIRED COMPONENTS
 	dr_log
 	dr_util
 	dr_camera
-	dr_uv_mapping
 	dr_opencv
 	pcl_ros
 	pcl_conversions

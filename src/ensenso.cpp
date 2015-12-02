@@ -1,6 +1,5 @@
 #include "ensenso.hpp"
 #include <dr_log/dr_log.hpp>
-#include <dr_uv_mapping/uv_mapping.hpp>
 #include <dr_util/util.hpp>
 
 namespace dr {
@@ -155,18 +154,8 @@ void Ensenso::loadDepth(cv::Mat & depth) {
 	depth.convertTo(depth, CV_16UC1);
 }
 
-std::unique_ptr<UvMapping> Ensenso::getUvMapping() {
-	// return "empty" UV mapping
-	if (found_overlay) {
-		return make_unique<LinearUvMapping>(getIntensitySize(), getIntensitySize());
-	} else {
-		return make_unique<LinearUvMapping>(getDepthSize(), getIntensitySize());
-	}
-}
-
 void Ensenso::loadPointCloud(
-	cv::Mat const &,
-	DepthCamera::PointCloud & cloud,
+	PointCloudCamera::PointCloud & cloud,
 	cv::Rect
 ) {
 	// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
@@ -213,11 +202,5 @@ void Ensenso::loadPointCloud(
 		cloud.points[i / 3].z = point_map[i + 2] / 1000.0;
 	}
 }
-
-pcl::PointXYZ Ensenso::get3d(cv::Point const &, double) {
-	throw std::runtime_error("Not supported.");
-	return pcl::PointXYZ();
-}
-
 
 }
