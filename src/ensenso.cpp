@@ -6,6 +6,29 @@
 
 namespace dr {
 
+namespace {
+
+void executeNxCommand(NxLibCommand & command) {
+	try {
+		command.execute();
+	} catch (NxLibException const & e) {
+		if (e.getErrorCode() == 17) {
+			int code = command.result()[itmErrorSymbol].asInt();
+			std::string message = command.result()[itmErrorText].asString();
+			throw std::runtime_error("Failed to execute NxLibCommand: code " + std::to_string(code) + ": " + message);
+		} else {
+			throw std::runtime_error("NxLibException at " + e.getItemPath() + ": " + std::to_string(e.getErrorCode()) + ": " + e.getErrorText());
+		}
+	}
+}
+
+void executeNxCommand(NxLibCommand && command) {
+	return executeNxCommand(command);
+}
+
+
+}
+
 Ensenso::Ensenso(): found_overlay(false) {
 	// initialize nxLib
 	nxLibInitialize();
@@ -24,7 +47,7 @@ Ensenso::Ensenso(): found_overlay(false) {
 			std::string serial = overlay_camera[itmSerialNumber].asString();
 			NxLibCommand open(cmdOpen);
 			open.parameters()[itmCameras] = serial;
-			open.execute();
+			executeNxCommand(open);
 		}
 	}
 
@@ -37,11 +60,11 @@ Ensenso::Ensenso(): found_overlay(false) {
 	std::string serial = ensenso_camera[itmSerialNumber].asString();
 	NxLibCommand open(cmdOpen);
 	open.parameters()[itmCameras] = serial;
-	open.execute();
+	executeNxCommand(open);
 }
 
 Ensenso::~Ensenso() {
-	NxLibCommand(cmdClose).execute();
+	executeNxCommand(NxLibCommand(cmdClose));
 	nxLibFinalize();
 }
 
@@ -82,7 +105,7 @@ void Ensenso::loadIntensity(cv::Mat & intensity) {
 	}
 
 	// capture images
-	NxLibCommand(cmdCapture).execute();
+	executeNxCommand(NxLibCommand(cmdCapture));
 
 	// get binary data
 	if (found_overlay) {
@@ -127,7 +150,7 @@ void Ensenso::loadDepth(cv::Mat & depth) {
 	std::vector<uint8_t> data(depth_size.area());
 
 	// capture images
-	NxLibCommand(cmdCapture).execute();
+	executeNxCommand(NxLibCommand(cmdCapture));
 
 	// get binary data
 	ensenso_camera[itmImages][itmRaw][itmRight].getBinaryData(data, 0);
@@ -143,48 +166,53 @@ void Ensenso::loadPointCloud(
 	PointCloudCamera::PointCloud & cloud,
 	cv::Rect
 ) {
-	// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
-	//std::cout << "Grabbing an image" << std::endl;
-	NxLibCommand(cmdCapture).execute(); // Without parameters, most commands just operate on all open cameras
-	//std::cout << "Computing the disparity map" << std::endl; // This is the actual, computation intensive stereo matching task
-	NxLibCommand(cmdComputeDisparityMap).execute();
-	//std::cout << "Generating point map from disparity map" << std::endl; // This converts the disparity map into XYZ data for each pixel
-	NxLibCommand(cmdComputePointMap).execute();
+	try {
+		// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
+		std::cout << "Grabbing an image" << std::endl;
+		executeNxCommand(NxLibCommand(cmdCapture)); // Without parameters, most commands just operate on all open cameras
+		std::cout << "Computing the disparity map" << std::endl; // This is the actual, computation intensive stereo matching task
+		executeNxCommand(NxLibCommand(cmdComputeDisparityMap));
+		std::cout << "Generating point map from disparity map" << std::endl; // This converts the disparity map into XYZ data for each pixel
+		executeNxCommand(NxLibCommand(cmdComputePointMap));
+		std::cout << "Done" << std::endl; // This converts the disparity map into XYZ data for each pixel
 
-	// Get info about the computed point map and copy it into a std::vector
-	double timestamp;
-	std::vector<float> point_map;
-	int width;
-	int height;
+		// Get info about the computed point map and copy it into a std::vector
+		double timestamp;
+		std::vector<float> point_map;
+		int width;
+		int height;
 
 
-	if (found_overlay) {
-		NxLibCommand render_pointmap(cmdRenderPointMap);
-		render_pointmap.parameters()[itmCamera]            = overlay_camera[itmSerialNumber].asString();
-		render_pointmap.parameters()[itmCameras]           = ensenso_camera[itmSerialNumber].asString();
-		render_pointmap.parameters()[itmNear]              = 50; // must be set
-		render_pointmap.execute();
+		if (found_overlay) {
+			NxLibCommand render_pointmap(cmdRenderPointMap);
+			render_pointmap.parameters()[itmCamera]            = overlay_camera[itmSerialNumber].asString();
+			render_pointmap.parameters()[itmCameras]           = ensenso_camera[itmSerialNumber].asString();
+			render_pointmap.parameters()[itmNear]              = 50; // must be set
+			executeNxCommand(render_pointmap);
 
-		root[itmImages][itmRenderPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
-		root[itmImages][itmRenderPointMap].getBinaryData(point_map, 0);
-	} else {
-		ensenso_camera[itmImages][itmPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
-		ensenso_camera[itmImages][itmPointMap].getBinaryData(point_map, 0);
-	}
+			root[itmImages][itmRenderPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
+			root[itmImages][itmRenderPointMap].getBinaryData(point_map, 0);
+		} else {
+			ensenso_camera[itmImages][itmPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
+			ensenso_camera[itmImages][itmPointMap].getBinaryData(point_map, 0);
+		}
 
-	// Copy point cloud and convert in meters
-	cloud.header.stamp    = ensensoStampToPcl(timestamp);
-	cloud.header.frame_id = "/camera_link";
-	cloud.width           = width;
-	cloud.height          = height;
-	cloud.is_dense        = false;
-	cloud.resize(height * width);
+		// Copy point cloud and convert in meters
+		cloud.header.stamp    = ensensoStampToPcl(timestamp);
+		cloud.header.frame_id = "/camera_link";
+		cloud.width           = width;
+		cloud.height          = height;
+		cloud.is_dense        = false;
+		cloud.resize(height * width);
 
-	// Copy data in point cloud (and convert milimeters in meters)
-	for (size_t i = 0; i < point_map.size (); i += 3) {
-		cloud.points[i / 3].x = point_map[i] / 1000.0;
-		cloud.points[i / 3].y = point_map[i + 1] / 1000.0;
-		cloud.points[i / 3].z = point_map[i + 2] / 1000.0;
+		// Copy data in point cloud (and convert milimeters in meters)
+		for (size_t i = 0; i < point_map.size (); i += 3) {
+			cloud.points[i / 3].x = point_map[i] / 1000.0;
+			cloud.points[i / 3].y = point_map[i + 1] / 1000.0;
+			cloud.points[i / 3].z = point_map[i + 2] / 1000.0;
+		}
+	} catch (NxLibException const & e) {
+		throw std::runtime_error("NxLibException at " + e.getItemPath() + ": " + std::to_string(e.getErrorCode()) + ": " + e.getErrorText());
 	}
 }
 
