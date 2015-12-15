@@ -2,6 +2,8 @@
 #include <dr_log/dr_log.hpp>
 #include <dr_util/util.hpp>
 
+#include <fstream>
+
 namespace dr {
 
 Ensenso::Ensenso(): found_overlay(false) {
@@ -102,29 +104,12 @@ void Ensenso::loadIntensity(cv::Mat & intensity) {
 }
 
 void Ensenso::loadParameters(std::string const parameters_file) {
-	FILE * file = fopen(parameters_file.c_str(), "r");
+	std::ifstream file(parameters_file);
+	std::stringstream buffer;
+	buffer << file.rdbuf();
 
-	if (!file) {
-		DR_ERROR("Could not load parameters file '" << parameters_file << "'.");
-		return;
-	}
-
-	int num_char = 0, error = 0;
-	int const max_length = 1024 * 64 + 1;
-	char str[max_length];
-
-	while (true) {
-		int readchar = getc(file);
-		if (EOF == readchar || max_length == num_char) {
-			str[num_char] = '\0';
-			break;
-		}
-		str[num_char++] = (char)readchar;
-	}
-
-	fclose(file);
-
-	nxLibSetJson(&error, "Cameras/ByEepromId/\\1/Parameters", str, NXLIBTRUE);
+	int error;
+	ensenso_camera[itmParameters].setJson(&error, buffer.str(), true);
 	if (error != NxLibOperationSucceeded) {
 		DR_ERROR("Could not set camera parameters. Error code: " << error);
 	}
