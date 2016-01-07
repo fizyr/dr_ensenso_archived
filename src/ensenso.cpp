@@ -80,7 +80,7 @@ cv::Size Ensenso::getIntensitySize() {
 	return cv::Size(width, height);
 }
 
-cv::Size Ensenso::getDepthSize() {
+cv::Size Ensenso::getPointCloudSize() {
 	int width, height;
 	if (region_of_interest.area()) {
 		width  = region_of_interest.width;
@@ -141,30 +141,6 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 	if (error != NxLibOperationSucceeded) {
 		DR_ERROR("Could not set camera parameters. Error code: " << error);
 	}
-}
-
-void Ensenso::loadDepth(cv::Mat & depth) {
-	// create data container
-	cv::Size depth_size = getDepthSize();
-	// no size
-	if (depth_size.area() == 0) {
-		depth = cv::Mat();
-		return;
-	}
-
-	std::vector<uint8_t> data(depth_size.area());
-
-	// capture images
-	executeNxCommand(NxLibCommand(cmdCapture));
-
-	// get binary data
-	ensenso_camera[itmImages][itmRaw][itmRight].getBinaryData(data, 0);
-
-	// copy to cv::Mat
-	depth = cv::Mat(depth_size, CV_8UC1);
-	std::memcpy(depth.data, data.data(), depth_size.area() * sizeof(uint8_t));
-	// data is expected as uint16_t
-	depth.convertTo(depth, CV_16UC1);
 }
 
 void Ensenso::loadPointCloud(

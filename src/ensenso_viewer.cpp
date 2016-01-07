@@ -18,7 +18,7 @@ protected:
 
 	virtual std::shared_ptr<DepthCamera> getDepthCamera(uint8_t id) const {
 		(void) id;
-		return ensenso;
+		return nullptr;
 	}
 
 	virtual std::shared_ptr<PointCloudCamera> getPointCloudCamera(uint8_t id) const {

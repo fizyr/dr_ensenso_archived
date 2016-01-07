@@ -8,7 +8,7 @@
 
 namespace dr {
 
-class Ensenso : public IntensityCamera, public DepthCamera, public PointCloudCamera {
+class Ensenso : public IntensityCamera, public PointCloudCamera {
 public:
 	Ensenso();
 
@@ -18,13 +18,10 @@ public:
 	cv::Size getIntensitySize() override;
 
 	/// Returns the size of the depth images.
-	cv::Size getDepthSize() override;
+	cv::Size getPointCloudSize() override;
 
 	/// Loads the intensity image to intensity.
 	void loadIntensity(cv::Mat & intensity) override;
-
-	/// Loads the depth image to depth.
-	void loadDepth(cv::Mat & depth) override;
 
 	/// Loads the camera parameters from a JSON file.
 	void loadParameters(std::string const parameters_file);
