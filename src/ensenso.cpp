@@ -29,7 +29,7 @@ void executeNxCommand(NxLibCommand && command) {
 
 }
 
-Ensenso::Ensenso(): found_overlay(false) {
+Ensenso::Ensenso(bool connect_overlay): found_overlay(false) {
 	// initialize nxLib
 	nxLibInitialize();
 
@@ -40,7 +40,7 @@ Ensenso::Ensenso(): found_overlay(false) {
 	for (int n = 0; n < cams.count(); n++) {
 		if (cams[n][itmType] == valStereo)
 			ensenso_camera = cams[n];
-		else if (cams[n][itmType] == valMonocular) {
+		else if (cams[n][itmType] == valMonocular && connect_overlay) {
 			overlay_camera = cams[n];
 			found_overlay = true;
 

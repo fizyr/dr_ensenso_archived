@@ -7,8 +7,9 @@ namespace dr {
 class EnsensoViewer : public CameraViewer {
 public:
 	EnsensoViewer() :
-		CameraViewer(true, 1, 1),
-		ensenso(new dr::Ensenso()) {}
+		CameraViewer(true, 1, 0),
+		ensenso(new dr::Ensenso()) {
+	}
 
 protected:
 	virtual std::shared_ptr<IntensityCamera> getIntensityCamera(uint8_t id) const {

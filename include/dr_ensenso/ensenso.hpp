@@ -10,7 +10,7 @@ namespace dr {
 
 class Ensenso : public IntensityCamera, public PointCloudCamera {
 public:
-	Ensenso();
+	Ensenso(bool connect_overlay = true);
 
 	~Ensenso();
 
