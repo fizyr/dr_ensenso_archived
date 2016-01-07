@@ -82,7 +82,12 @@ cv::Size Ensenso::getIntensitySize() {
 
 cv::Size Ensenso::getDepthSize() {
 	int width, height;
-	ensenso_camera[itmImages][itmPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
+	if (region_of_interest.area()) {
+		width  = region_of_interest.width;
+		height = region_of_interest.height;
+	} else {
+		ensenso_camera[itmImages][itmPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
+	}
 
 	return cv::Size(width, height);
 }
@@ -214,6 +219,15 @@ void Ensenso::loadPointCloud(
 	} catch (NxLibException const & e) {
 		throw std::runtime_error("NxLibException at " + e.getItemPath() + ": " + std::to_string(e.getErrorCode()) + ": " + e.getErrorText());
 	}
+}
+
+void Ensenso::setRegionOfInterest(cv::Rect const & roi) {
+	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][0]     = roi.tl().x;
+	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][1]     = roi.tl().y;
+	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][0] = roi.br().x;
+	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][1] = roi.br().y;
+
+	region_of_interest = roi;
 }
 
 }
