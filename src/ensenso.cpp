@@ -143,19 +143,15 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 	}
 }
 
-void Ensenso::loadPointCloud(
-	PointCloudCamera::PointCloud & cloud,
-	cv::Rect
-) {
+void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
 	try {
 		// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
-		std::cout << "Grabbing an image" << std::endl;
 		executeNxCommand(NxLibCommand(cmdCapture)); // Without parameters, most commands just operate on all open cameras
-		std::cout << "Computing the disparity map" << std::endl; // This is the actual, computation intensive stereo matching task
+		DR_DEBUG("Computing the disparity map."); // This is the actual, computation intensive stereo matching task
 		executeNxCommand(NxLibCommand(cmdComputeDisparityMap));
-		std::cout << "Generating point map from disparity map" << std::endl; // This converts the disparity map into XYZ data for each pixel
+		DR_DEBUG("Generating point map from disparity map."); // This converts the disparity map into XYZ data for each pixel
 		executeNxCommand(NxLibCommand(cmdComputePointMap));
-		std::cout << "Done" << std::endl; // This converts the disparity map into XYZ data for each pixel
+		DR_DEBUG("Done."); // This converts the disparity map into XYZ data for each pixel
 
 		// Get info about the computed point map and copy it into a std::vector
 		double timestamp;
