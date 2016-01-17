@@ -33,6 +33,7 @@ add_library(${PROJECT_NAME}
 	src/ensenso.cpp
 	src/util.cpp
 	src/eigen.cpp
+	src/opencv.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Ensenso_LIBS}

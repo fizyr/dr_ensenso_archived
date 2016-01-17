@@ -1,5 +1,6 @@
 #include "ensenso.hpp"
 #include "util.hpp"
+#include "opencv.hpp"
 
 #include <dr_log/dr_log.hpp>
 #include <dr_util/util.hpp>
@@ -72,41 +73,14 @@ cv::Size Ensenso::getPointCloudSize() {
 }
 
 void Ensenso::loadIntensity(cv::Mat & intensity) {
-	// create data container
-	cv::Size intensity_size = getIntensitySize();
-
-	// no size
-	if (intensity_size.area() == 0) {
-		intensity = cv::Mat();
-		return;
-	}
-
-	std::vector<uint8_t> data;
-	if (found_overlay) {
-		data.resize(intensity_size.area() * 3); // RGB
-	} else {
-		data.resize(intensity_size.area());
-	}
-
 	// capture images
 	executeNx(NxLibCommand(cmdCapture));
 
-	// get binary data
-	if (found_overlay) {
-		overlay_camera[itmImages][itmRaw].getBinaryData(data, 0);
-	} else {
-		ensenso_camera[itmImages][itmRaw][itmLeft].getBinaryData(data, 0);
-	}
-
 	// copy to cv::Mat
 	if (found_overlay) {
-		intensity = cv::Mat(intensity_size, CV_8UC3);
-		std::memcpy(intensity.data, data.data(), intensity_size.area() * sizeof(uint8_t) * 3);
-		cv::cvtColor(intensity, intensity, cv::COLOR_RGB2BGR);
+		cv::cvtColor(toCvMat(overlay_camera[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
 	} else {
-		intensity = cv::Mat(intensity_size, CV_8UC1);
-		std::memcpy(intensity.data, data.data(), intensity_size.area() * sizeof(uint8_t));
-		cv::cvtColor(intensity, intensity, cv::COLOR_GRAY2BGR);
+		cv::cvtColor(toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]), intensity, cv::COLOR_GRAY2BGR);
 	}
 }
 
