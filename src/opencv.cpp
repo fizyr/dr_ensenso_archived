@@ -1,5 +1,5 @@
 // Must include opencv version information before nxLib, so make it the first include.
-#include <opencv2/core.hpp>
+#include <opencv2/opencv.hpp>
 #include "opencv.hpp"
 #include "util.hpp"
 
