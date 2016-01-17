@@ -116,9 +116,10 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 	buffer << file.rdbuf();
 
 	int error;
-	ensenso_camera[itmParameters].setJson(&error, buffer.str(), true);
-	if (error != NxLibOperationSucceeded) {
-		DR_ERROR("Could not set camera parameters. Error code: " << error);
+	try {
+		ensenso_camera[itmParameters].setJson(&error, buffer.str(), true);
+	} catch (NxLibException const & e) {
+		throw NxError(e);
 	}
 }
 
@@ -137,7 +138,6 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
 		std::vector<float> point_map;
 		int width;
 		int height;
-
 
 		if (found_overlay) {
 			NxLibCommand render_pointmap(cmdRenderPointMap);
