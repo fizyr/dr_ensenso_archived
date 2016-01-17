@@ -18,9 +18,9 @@ Ensenso::Ensenso(bool connect_overlay): found_overlay(false) {
 
 	// create an object referencing the camera's tree item, for easier access:
 	for (int n = 0; n < cams.count(); n++) {
-		if (cams[n][itmType] == valStereo)
+		if (cams[n][itmType] == valStereo) {
 			ensenso_camera = cams[n];
-		else if (cams[n][itmType] == valMonocular && connect_overlay) {
+		} else if (cams[n][itmType] == valMonocular && connect_overlay) {
 			overlay_camera = cams[n];
 			found_overlay = true;
 
