@@ -10,9 +10,13 @@ namespace dr {
 /// Wrapper for NxLibException that also inherits from std::runtime_error.
 class NxError : public NxLibException, public std::runtime_error {
 public:
-	NxError(NxLibException const & error, std::string const & what = "");
-	NxError(NxLibCommand &, NxLibException const & error, std::string const & what = "");
-	NxError(NxLibCommand &&, NxLibException const & error, std::string const & what = "");
+	NxError(std::string const & path, int error, std::string const & what = "");
+	NxError(NxLibItem const & item,   int error, std::string const & what = "");
+	NxError(NxLibException const & error,        std::string const & what = "");
+
+	NxError(NxLibCommand const &, std::string const & path, int error, std::string const & what = "");
+	NxError(NxLibCommand const &, NxLibItem const & item,   int error, std::string const & what = "");
+	NxError(NxLibCommand const &, NxLibException const & error,        std::string const & what = "");
 };
 
 /// Execute an NxLibCommand.
