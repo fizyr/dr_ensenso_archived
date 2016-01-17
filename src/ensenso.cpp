@@ -13,9 +13,9 @@ void executeNxCommand(NxLibCommand & command) {
 		command.execute();
 	} catch (NxLibException const & e) {
 		if (e.getErrorCode() == 17) {
-			int code = command.result()[itmErrorSymbol].asInt();
+			std::string code = command.result()[itmErrorSymbol].asString();
 			std::string message = command.result()[itmErrorText].asString();
-			throw std::runtime_error("Failed to execute NxLibCommand: code " + std::to_string(code) + ": " + message);
+			throw std::runtime_error("Failed to execute NxLibCommand: error " + code + ": " + message);
 		} else {
 			throw std::runtime_error("NxLibException at " + e.getItemPath() + ": " + std::to_string(e.getErrorCode()) + ": " + e.getErrorText());
 		}
