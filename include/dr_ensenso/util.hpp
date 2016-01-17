@@ -62,21 +62,12 @@ void setNx(NxLibItem && item, T && value, std::string const & what = "") {
  * \throw NxError on failure.
  */
 template<typename T>
-T getNx(NxLibItem & item, std::string const & what = "") {
+T getNx(NxLibItem const & item, std::string const & what = "") {
 	try {
 		return item.as<T>();
 	} catch (NxLibException & e) {
 		throw NxError(e, what);
 	}
-}
-
-/// Get the value of an NxLibItem as the specified type.
-/**
- * \throw NxError on failure.
- */
-template<typename T>
-T getNx(NxLibItem && item, std::string const & what = "") {
-	return getNx<T>(item, what);
 }
 
 }
