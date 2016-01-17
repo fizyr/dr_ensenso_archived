@@ -1,6 +1,6 @@
 #pragma once
 #include <Eigen/Dense>
-#include <nxLib.h>
+#include <ensenso/nxLib.h>
 
 namespace dr {
 

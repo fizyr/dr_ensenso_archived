@@ -1,5 +1,5 @@
 #pragma once
-#include <nxLib.h>
+#include <ensenso/nxLib.h>
 
 #include <string>
 #include <stdexcept>

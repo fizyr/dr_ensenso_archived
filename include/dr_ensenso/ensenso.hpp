@@ -4,7 +4,7 @@
 #include <dr_camera/depth_camera.hpp>
 #include <dr_camera/point_cloud_camera.hpp>
 
-#include <nxLib.h>
+#include <ensenso/nxLib.h>
 
 namespace dr {
 
