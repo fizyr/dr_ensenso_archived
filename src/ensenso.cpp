@@ -8,29 +8,6 @@
 
 namespace dr {
 
-namespace {
-
-void executeNxCommand(NxLibCommand & command) {
-	try {
-		command.execute();
-	} catch (NxLibException const & e) {
-		if (e.getErrorCode() == 17) {
-			std::string code = command.result()[itmErrorSymbol].asString();
-			std::string message = command.result()[itmErrorText].asString();
-			throw std::runtime_error("Failed to execute NxLibCommand: error " + code + ": " + message);
-		} else {
-			throw std::runtime_error("NxLibException at " + e.getItemPath() + ": " + std::to_string(e.getErrorCode()) + ": " + e.getErrorText());
-		}
-	}
-}
-
-void executeNxCommand(NxLibCommand && command) {
-	return executeNxCommand(command);
-}
-
-
-}
-
 Ensenso::Ensenso(bool connect_overlay): found_overlay(false) {
 	// initialize nxLib
 	nxLibInitialize();
@@ -49,7 +26,7 @@ Ensenso::Ensenso(bool connect_overlay): found_overlay(false) {
 			std::string serial = overlay_camera[itmSerialNumber].asString();
 			NxLibCommand open(cmdOpen);
 			open.parameters()[itmCameras] = serial;
-			executeNxCommand(open);
+			executeNx(open);
 		}
 	}
 
@@ -62,11 +39,11 @@ Ensenso::Ensenso(bool connect_overlay): found_overlay(false) {
 	std::string serial = ensenso_camera[itmSerialNumber].asString();
 	NxLibCommand open(cmdOpen);
 	open.parameters()[itmCameras] = serial;
-	executeNxCommand(open);
+	executeNx(open);
 }
 
 Ensenso::~Ensenso() {
-	executeNxCommand(NxLibCommand(cmdClose));
+	executeNx(NxLibCommand(cmdClose));
 	nxLibFinalize();
 }
 
@@ -112,7 +89,7 @@ void Ensenso::loadIntensity(cv::Mat & intensity) {
 	}
 
 	// capture images
-	executeNxCommand(NxLibCommand(cmdCapture));
+	executeNx(NxLibCommand(cmdCapture));
 
 	// get binary data
 	if (found_overlay) {
@@ -148,11 +125,11 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
 	try {
 		// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
-		executeNxCommand(NxLibCommand(cmdCapture)); // Without parameters, most commands just operate on all open cameras
+		executeNx(NxLibCommand(cmdCapture)); // Without parameters, most commands just operate on all open cameras
 		DR_DEBUG("Computing the disparity map."); // This is the actual, computation intensive stereo matching task
-		executeNxCommand(NxLibCommand(cmdComputeDisparityMap));
+		executeNx(NxLibCommand(cmdComputeDisparityMap));
 		DR_DEBUG("Generating point map from disparity map."); // This converts the disparity map into XYZ data for each pixel
-		executeNxCommand(NxLibCommand(cmdComputePointMap));
+		executeNx(NxLibCommand(cmdComputePointMap));
 		DR_DEBUG("Done."); // This converts the disparity map into XYZ data for each pixel
 
 		// Get info about the computed point map and copy it into a std::vector
@@ -167,7 +144,7 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
 			render_pointmap.parameters()[itmCamera]            = overlay_camera[itmSerialNumber].asString();
 			render_pointmap.parameters()[itmCameras]           = ensenso_camera[itmSerialNumber].asString();
 			render_pointmap.parameters()[itmNear]              = 50; // must be set
-			executeNxCommand(render_pointmap);
+			executeNx(render_pointmap);
 
 			root[itmImages][itmRenderPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
 			root[itmImages][itmRenderPointMap].getBinaryData(point_map, 0);
@@ -191,7 +168,7 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
 			cloud.points[i / 3].z = point_map[i + 2] / 1000.0;
 		}
 	} catch (NxLibException const & e) {
-		throw std::runtime_error("NxLibException at " + e.getItemPath() + ": " + std::to_string(e.getErrorCode()) + ": " + e.getErrorText());
+		throw NxError(e);
 	}
 }
 
