@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
 	dr_log
 	dr_util
 	dr_camera
+	dr_eigen
 	dr_opencv
 	pcl_ros
 	pcl_conversions
@@ -30,12 +31,11 @@ dr_include_directories(
 
 add_library(${PROJECT_NAME}
 	src/ensenso.cpp
+	src/util.cpp
+	src/eigen.cpp
 )
 
-target_link_libraries(${PROJECT_NAME}
-	${catkin_LIBRARIES}
-	${OpenCV_LIBRARIES}
-	${Ensenso_LIBS}
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Ensenso_LIBS}
 )
 
 add_executable(ensenso_viewer src/ensenso_viewer.cpp)

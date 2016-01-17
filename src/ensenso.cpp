@@ -1,4 +1,6 @@
 #include "ensenso.hpp"
+#include "util.hpp"
+
 #include <dr_log/dr_log.hpp>
 #include <dr_util/util.hpp>
 

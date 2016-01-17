@@ -12,6 +12,7 @@
 	<depend>roscpp</depend>
 	<depend>dr_base</depend>
 	<depend>dr_log</depend>
+	<depend>dr_eigen</depend>
 	<depend>dr_util</depend>
 	<depend>dr_camera</depend>
 	<depend>dr_opencv</depend>
