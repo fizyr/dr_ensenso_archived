@@ -5,14 +5,12 @@
 
 namespace dr {
 
-cv::Mat toCvMat(NxLibItem const & item) {
-	try {
-		cv::Mat result;
-		item.setBinaryData(result);
-		return result;
-	} catch (NxLibException const & e) {
-		throw NxError(e);
-	}
+cv::Mat toCvMat(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	cv::Mat result;
+	item.getBinaryData(&error, result, nullptr);
+	if (error) throw NxError(item, error, what);
+	return result;
 }
 
 }

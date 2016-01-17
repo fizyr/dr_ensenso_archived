@@ -9,6 +9,6 @@ namespace dr {
 /**
  * \throw NxError on failure.
  */
-cv::Mat toCvMat(NxLibItem const & item);
+cv::Mat toCvMat(NxLibItem const & item, std::string const & what = "");
 
 }

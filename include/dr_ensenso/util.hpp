@@ -24,11 +24,9 @@ public:
  * \throw NxError on failure.
  */
 inline void executeNx(NxLibCommand & command, std::string const & what = "") {
-	try {
-		command.execute();
-	} catch (NxLibException const & e) {
-		throw NxError(command, e, what);
-	}
+	int error = 0;
+	command.execute(&error);
+	if (error) throw NxError(command, itmExecute, error, what);
 }
 
 /// Execute an NxLibCommand.
@@ -45,11 +43,9 @@ inline void executeNx(NxLibCommand && command, std::string const & what = "") {
  */
 template<typename T>
 void setNx(NxLibItem & item, T && value, std::string const & what = "") {
-	try {
-		item.set(std::forward<T>(value));
-	} catch (NxLibException & e) {
-		throw NxError(e, what);
-	}
+	int error = 0;
+	item.set(&error, std::forward<T>(value));
+	if (error) throw NxError(item, error, what);
 }
 
 /// Set the value of an NxLibItem.
@@ -67,11 +63,10 @@ void setNx(NxLibItem && item, T && value, std::string const & what = "") {
  */
 template<typename T>
 T getNx(NxLibItem const & item, std::string const & what = "") {
-	try {
-		return item.as<T>();
-	} catch (NxLibException & e) {
-		throw NxError(e, what);
-	}
+	int error = 0;
+	T result = item.as<T>(&error);
+	if (error) throw NxError(item, error, what);
+	return result;
 }
 
 }

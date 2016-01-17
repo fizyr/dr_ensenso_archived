@@ -89,12 +89,9 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 	std::stringstream buffer;
 	buffer << file.rdbuf();
 
-	int error;
-	try {
-		ensenso_camera[itmParameters].setJson(&error, buffer.str(), true);
-	} catch (NxLibException const & e) {
-		throw NxError(e);
-	}
+	int error = 0;
+	ensenso_camera[itmParameters].setJson(&error, buffer.str(), true);
+	if (error) throw NxError(ensenso_camera[itmParameters], error);
 }
 
 void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
