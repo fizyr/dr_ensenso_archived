@@ -62,25 +62,24 @@ cv::Size Ensenso::getIntensitySize() {
 
 cv::Size Ensenso::getPointCloudSize() {
 	int width, height;
-	if (region_of_interest.area()) {
-		width  = region_of_interest.width;
-		height = region_of_interest.height;
-	} else {
-		ensenso_camera[itmImages][itmPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
-	}
-
+	ensenso_camera[itmImages][itmPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
 	return cv::Size(width, height);
 }
 
-void Ensenso::loadIntensity(cv::Mat & intensity) {
-	// capture images
-	executeNx(NxLibCommand(cmdCapture));
+void Ensenso::loadIntensity(cv::Mat & intensity, cv::Rect roi) {
+	try {
+		setRegionOfInterest(roi);
+		// capture images
+		executeNx(NxLibCommand(cmdCapture));
 
-	// copy to cv::Mat
-	if (found_overlay) {
-		cv::cvtColor(toCvMat(overlay_camera[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
-	} else {
-		cv::cvtColor(toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]), intensity, cv::COLOR_GRAY2BGR);
+		// copy to cv::Mat
+		if (found_overlay) {
+			cv::cvtColor(toCvMat(overlay_camera[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
+		} else {
+			cv::cvtColor(toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]), intensity, cv::COLOR_GRAY2BGR);
+		}
+	} catch (NxLibException const & e) {
+		throw NxError(e);
 	}
 }
 
@@ -94,10 +93,14 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 	if (error) throw NxError(ensenso_camera[itmParameters], error);
 }
 
-void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
+void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi) {
 	try {
+		setRegionOfInterest(roi);
+
 		// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
-		executeNx(NxLibCommand(cmdCapture)); // Without parameters, most commands just operate on all open cameras
+		NxLibCommand capture(cmdCapture);
+		/*capture.parameters()[itmTimeout] = 1500;*/
+		executeNx(capture); // Capture new data.
 		DR_DEBUG("Computing the disparity map."); // This is the actual, computation intensive stereo matching task
 		executeNx(NxLibCommand(cmdComputeDisparityMap));
 		DR_DEBUG("Generating point map from disparity map."); // This converts the disparity map into XYZ data for each pixel
@@ -144,12 +147,20 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect) {
 }
 
 void Ensenso::setRegionOfInterest(cv::Rect const & roi) {
-	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][0]     = roi.tl().x;
-	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][1]     = roi.tl().y;
-	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][0] = roi.br().x;
-	ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][1] = roi.br().y;
+	if (roi.area() == 0) {
+		ensenso_camera[itmParameters][itmCapture][itmUseDisparityMapAreaOfInterest] = false;
 
-	region_of_interest = roi;
+		if (ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest].exists()) {
+			ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest].erase();
+		}
+	} else {
+		ensenso_camera[itmParameters][itmCapture][itmUseDisparityMapAreaOfInterest]          = true;
+		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][0]     = roi.tl().x;
+		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][1]     = roi.tl().y;
+		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][0] = roi.br().x;
+		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][1] = roi.br().y;
+	}
+
 }
 
 }
