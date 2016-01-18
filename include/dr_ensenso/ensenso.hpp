@@ -31,13 +31,7 @@ public:
 	 * \param cloud the resulting pointcloud.
 	 * \param roi The region of interest.
 	 */
-	void loadPointCloud(
-		PointCloudCamera::PointCloud & cloud,
-		cv::Rect roi = cv::Rect()
-	) override;
-
-	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
-	void setRegionOfInterest(cv::Rect const & roi);
+	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect()) override;
 
 protected:
 	/// The root EnsensoSDK node.
@@ -52,10 +46,11 @@ protected:
 	/// The overlay camera node.
 	NxLibItem overlay_camera;
 
-	cv::Rect region_of_interest;
-
 	/// Conversion from ensenso timestamp to PCL timestamp.
 	inline pcl::uint64_t ensensoStampToPcl(double stamp) { return (stamp - 11644473600.0) * 1000000.0; };
+
+	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
+	void setRegionOfInterest(cv::Rect const & roi);
 };
 
 }
