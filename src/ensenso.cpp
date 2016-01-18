@@ -83,6 +83,10 @@ void Ensenso::loadIntensity(cv::Mat & intensity, cv::Rect roi) {
 	}
 }
 
+void Ensenso::loadIntensity(cv::Mat & intensity) {
+	loadIntensity(intensity, cv::Rect());
+}
+
 void Ensenso::loadParameters(std::string const parameters_file) {
 	std::ifstream file(parameters_file);
 	std::stringstream buffer;

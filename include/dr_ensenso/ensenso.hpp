@@ -20,8 +20,10 @@ public:
 	/// Returns the size of the depth images.
 	cv::Size getPointCloudSize() override;
 
-	/// Loads the intensity image to intensity.
 	void loadIntensity(cv::Mat & intensity) override;
+
+	/// Loads the intensity image to intensity.
+	void loadIntensity(cv::Mat & intensity, cv::Rect roi);
 
 	/// Loads the camera parameters from a JSON file.
 	void loadParameters(std::string const parameters_file);
