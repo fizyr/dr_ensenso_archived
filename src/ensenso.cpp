@@ -1,4 +1,5 @@
 #include "ensenso.hpp"
+#include "eigen.hpp"
 #include "util.hpp"
 #include "opencv.hpp"
 
@@ -48,13 +49,17 @@ Ensenso::~Ensenso() {
 	nxLibFinalize();
 }
 
+void Ensenso::capture() {
+	executeNx(NxLibCommand(cmdCapture));
+}
+
 cv::Size Ensenso::getIntensitySize() {
 	int width, height;
 
-	if (found_overlay) {
+	try {
 		overlay_camera[itmImages][itmRaw].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
-	} else {
-		ensenso_camera[itmImages][itmRaw][itmLeft].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
+	} catch (NxLibException const & e) {
+		throw NxError(e);
 	}
 
 	return cv::Size(width, height);
@@ -66,25 +71,82 @@ cv::Size Ensenso::getPointCloudSize() {
 	return cv::Size(width, height);
 }
 
-void Ensenso::loadIntensity(cv::Mat & intensity, cv::Rect roi) {
-	try {
-		setRegionOfInterest(roi);
-		// capture images
-		executeNx(NxLibCommand(cmdCapture));
+Eigen::Matrix4d Ensenso::getReprojectionMatrix() const {
+	Eigen::Matrix4d reprojection =
+		toEigenMatrix<4, 4>(ensenso_camera[itmCalibration][itmStereo][itmReprojection]);
 
-		// copy to cv::Mat
-		if (found_overlay) {
-			cv::cvtColor(toCvMat(overlay_camera[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
-		} else {
-			cv::cvtColor(toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]), intensity, cv::COLOR_GRAY2BGR);
-		}
-	} catch (NxLibException const & e) {
-		throw NxError(e);
-	}
+	// Adjust the reprojection matrix to work with meters.
+	reprojection.block(0, 0, 3, 4) *= 0.001;
+
+	return reprojection;
+}
+
+IntrinsicParameters Ensenso::getIntrinsics(NxLibItem const & item) const {
+	IntrinsicParameters intrinsics;
+
+	double fx = getNx<double>(item[itmCamera][0][0]);
+	double fy = getNx<double>(item[itmCamera][1][1]);
+	double cx = getNx<double>(item[itmCamera][2][0]);
+	double cy = getNx<double>(item[itmCamera][2][1]);
+
+	double k1 = getNx<double>(item[itmDistortion][0]);
+	double k2 = getNx<double>(item[itmDistortion][1]);
+	double p1 = getNx<double>(item[itmDistortion][2]);
+	double p2 = getNx<double>(item[itmDistortion][3]);
+	double k3 = getNx<double>(item[itmDistortion][4]);
+
+	intrinsics.setFocalLength(cv::Point2d(fx, fy));
+	intrinsics.setImageCenter(cv::Point2d(cx, cy));
+	intrinsics.setDistortionParameters((cv::Mat_<double>(5, 1) << k1, k2, p1, p2, k3));
+
+	return intrinsics;
+}
+
+IntrinsicParameters Ensenso::getLeftIntrinsics() const {
+	return getIntrinsics(ensenso_camera[itmCalibration][itmDynamic][itmStereo][itmLeft]);
+}
+
+IntrinsicParameters Ensenso::getRightIntrinsics() const {
+	return getIntrinsics(ensenso_camera[itmCalibration][itmDynamic][itmStereo][itmRight]);
+}
+
+void Ensenso::loadIntensity(NxLibItem const & item, cv::Mat & intensity) const {
+	intensity = toCvMat(item).clone();
 }
 
 void Ensenso::loadIntensity(cv::Mat & intensity) {
-	loadIntensity(intensity, cv::Rect());
+	loadIntensity(overlay_camera[itmImages][itmRaw], intensity);
+	cv::cvtColor(intensity, intensity, cv::COLOR_RGB2BGR);
+}
+
+void Ensenso::setFrontLight(bool state) {
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], state);
+}
+
+void Ensenso::setProjector(bool state) {
+	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], state);
+}
+
+void Ensenso::loadLeftIntensity(cv::Mat & intensity) const {
+	loadIntensity(ensenso_camera[itmImages][itmRectified][itmLeft], intensity);
+}
+
+void Ensenso::loadRightIntensity(cv::Mat & intensity) const {
+	loadIntensity(ensenso_camera[itmImages][itmRectified][itmRight], intensity);
+}
+
+
+cv::Mat Ensenso::getLeftIntensity() const {
+	cv::Mat intensity;
+	loadLeftIntensity(intensity);
+	return intensity;
+}
+
+cv::Mat Ensenso::getRightIntensity() const {
+	cv::Mat intensity;
+	loadRightIntensity(intensity);
+	return intensity;
+
 }
 
 void Ensenso::loadParameters(std::string const parameters_file) {
@@ -103,13 +165,10 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi)
 
 		// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
 		NxLibCommand capture(cmdCapture);
-		/*capture.parameters()[itmTimeout] = 1500;*/
+		capture.parameters()[itmTimeout] = 1500;
 		executeNx(capture); // Capture new data.
-		DR_DEBUG("Computing the disparity map."); // This is the actual, computation intensive stereo matching task
 		executeNx(NxLibCommand(cmdComputeDisparityMap));
-		DR_DEBUG("Generating point map from disparity map."); // This converts the disparity map into XYZ data for each pixel
 		executeNx(NxLibCommand(cmdComputePointMap));
-		DR_DEBUG("Done."); // This converts the disparity map into XYZ data for each pixel
 
 		// Get info about the computed point map and copy it into a std::vector
 		double timestamp;

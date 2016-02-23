@@ -3,6 +3,7 @@
 #include <dr_camera/intensity_camera.hpp>
 #include <dr_camera/depth_camera.hpp>
 #include <dr_camera/point_cloud_camera.hpp>
+#include <dr_camera_parameters/intrinsic_parameters.hpp>
 
 #include <ensenso/nxLib.h>
 
@@ -14,16 +15,32 @@ public:
 
 	~Ensenso();
 
+	/// Get new data.
+	void capture();
+
 	/// Returns the size of the intensity images.
 	cv::Size getIntensitySize() override;
 
 	/// Returns the size of the depth images.
 	cv::Size getPointCloudSize() override;
 
-	void loadIntensity(cv::Mat & intensity) override;
-
 	/// Loads the intensity image to intensity.
-	void loadIntensity(cv::Mat & intensity, cv::Rect roi);
+	void loadIntensity(cv::Mat & intensity) override;
+	void loadIntensity(NxLibItem const & item, cv::Mat & intensity) const;
+
+	/// Loads the (stereo) images from the Ensenso.
+	void loadLeftIntensity(cv::Mat & intensity) const;
+	void loadRightIntensity(cv::Mat & intensity) const;
+
+	cv::Mat getLeftIntensity() const;
+	cv::Mat getRightIntensity() const;
+
+	/// Get intrinsic parameters for Ensenso.
+	IntrinsicParameters getIntrinsics(NxLibItem const & item) const;
+	IntrinsicParameters getLeftIntrinsics() const;
+	IntrinsicParameters getRightIntrinsics() const;
+
+	Eigen::Matrix4d getReprojectionMatrix() const;
 
 	/// Loads the camera parameters from a JSON file.
 	void loadParameters(std::string const parameters_file);
@@ -34,6 +51,12 @@ public:
 	 * \param roi The region of interest.
 	 */
 	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect()) override;
+
+	/// Turns the front light on or off.
+	void setFrontLight(bool state);
+
+	/// Turns the projector on or off.
+	void setProjector(bool state);
 
 protected:
 	/// The root EnsensoSDK node.
@@ -53,6 +76,7 @@ protected:
 
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
 	void setRegionOfInterest(cv::Rect const & roi);
+
 };
 
 }
