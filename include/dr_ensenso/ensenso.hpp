@@ -15,8 +15,8 @@ public:
 
 	~Ensenso();
 
-	/// Get new data.
-	void capture();
+	/// Returns the pose of the camera with respect to the calibration plate.
+	Eigen::Isometry3d calibrate() const;
 
 	/// Returns the size of the intensity images.
 	cv::Size getIntensitySize() override;
@@ -26,21 +26,6 @@ public:
 
 	/// Loads the intensity image to intensity.
 	void loadIntensity(cv::Mat & intensity) override;
-	void loadIntensity(NxLibItem const & item, cv::Mat & intensity) const;
-
-	/// Loads the (stereo) images from the Ensenso.
-	void loadLeftIntensity(cv::Mat & intensity) const;
-	void loadRightIntensity(cv::Mat & intensity) const;
-
-	cv::Mat getLeftIntensity() const;
-	cv::Mat getRightIntensity() const;
-
-	/// Get intrinsic parameters for Ensenso.
-	IntrinsicParameters getIntrinsics(NxLibItem const & item) const;
-	IntrinsicParameters getLeftIntrinsics() const;
-	IntrinsicParameters getRightIntrinsics() const;
-
-	Eigen::Matrix4d getReprojectionMatrix() const;
 
 	/// Loads the camera parameters from a JSON file.
 	void loadParameters(std::string const parameters_file);
@@ -51,12 +36,6 @@ public:
 	 * \param roi The region of interest.
 	 */
 	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect()) override;
-
-	/// Turns the front light on or off.
-	void setFrontLight(bool state);
-
-	/// Turns the projector on or off.
-	void setProjector(bool state);
 
 protected:
 	/// The root EnsensoSDK node.
