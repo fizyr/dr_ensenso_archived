@@ -16,7 +16,7 @@ public:
 	~Ensenso();
 
 	/// Returns the pose of the camera with respect to the calibration plate.
-	Eigen::Isometry3d calibrate() const;
+	bool calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
 
 	/// Returns the size of the intensity images.
 	cv::Size getIntensitySize() override;

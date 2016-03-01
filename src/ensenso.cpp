@@ -49,33 +49,41 @@ Ensenso::~Ensenso() {
 	nxLibFinalize();
 }
 
-Eigen::Isometry3d Ensenso::calibrate() const {
-	// Capture image with front-light.
-	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], false);
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], true);
+bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const {
+	try {
 
-	{
-		NxLibCommand command(cmdCapture);
-		setNx(command.parameters()[itmCameras], ensenso_camera[itmEepromId].asInt());
-		executeNx(command);
+		executeNx(NxLibCommand(cmdDiscardPatterns));
+
+		for (int i = 0; i < num_patterns; ++i) {
+			// Capture image with front-light.
+			setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], false);
+			setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], true);
+
+			NxLibCommand command_capture(cmdCapture);
+			setNx(command_capture.parameters()[itmCameras], ensenso_camera[itmEepromId].asInt());
+			executeNx(command_capture);
+
+			setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], false);
+			setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], true);
+
+			// Find the pattern.
+			NxLibCommand command_collect_pattern(cmdCollectPattern);
+			setNx(command_collect_pattern.parameters()[itmCameras], ensenso_camera[itmEepromId].asInt());
+			setNx(command_collect_pattern.parameters()[itmDecodeData], true);
+			executeNx(command_collect_pattern);
+		}
+
+		/// Get the pose of the pattern.
+		NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
+		executeNx(command_estimate_pose);
+		pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
+
+	} catch (std::runtime_error const & e) {
+		DR_INFO("An unexpected error occurred during calibration: " << e.what());
+		return false;
 	}
 
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], false);
-	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], true);
-
-	// Find the pattern.
-	{
-		NxLibCommand command(cmdCollectPattern);
-		setNx(command.parameters()[itmCameras], ensenso_camera[itmEepromId].asInt());
-		setNx(command.parameters()[itmDecodeData], true);
-		executeNx(command);
-	}
-
-	/// Get the pose of the pattern.
-	NxLibCommand command(cmdEstimatePatternPose);
-	executeNx(command);
-
-	return  toEigenIsometry(command.result()["Patterns"][0][itmPatternPose]);
+	return true;
 }
 
 cv::Size Ensenso::getIntensitySize() {
