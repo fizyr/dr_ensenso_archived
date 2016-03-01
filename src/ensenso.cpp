@@ -77,6 +77,7 @@ bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const 
 		NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
 		executeNx(command_estimate_pose);
 		pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
+		pose.translation() *= 0.001;
 
 	} catch (std::runtime_error const & e) {
 		DR_INFO("An unexpected error occurred during calibration: " << e.what());
