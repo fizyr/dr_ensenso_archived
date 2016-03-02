@@ -36,8 +36,7 @@ add_library(${PROJECT_NAME}
 	src/opencv.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Ensenso_LIBS}
-)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Ensenso_LIBS})
 
 add_executable(ensenso_viewer src/ensenso_viewer.cpp)
 
@@ -49,5 +48,10 @@ target_link_libraries(ensenso_viewer
 )
 
 install(TARGETS ${PROJECT_NAME}
-	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
+)
+
+install(
+	DIRECTORY include/${PROJECT_NAME}/
+	DESTINATION "${CATKIN_PACKAGE_INCLUDE_DESTINATION}"
 )
