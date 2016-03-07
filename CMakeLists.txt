@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
 	pcl_conversions
 )
 
-find_package(OpenCV)
 find_package(Ensenso)
 find_package(Boost)
 
@@ -24,7 +23,6 @@ catkin_package(
 )
 
 dr_include_directories(
-	include
 	include/${PROJECT_NAME}
 	${catkin_INCLUDE_DIRS}
 	${Ensenso_INCLUDE_DIRS}
@@ -37,32 +35,22 @@ add_library(${PROJECT_NAME}
 	src/eigen.cpp
 	src/opencv.cpp
 )
-
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Ensenso_LIBS})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Ensenso_LIBS})
 
 add_executable(ensenso_viewer src/ensenso_viewer.cpp)
+target_link_libraries(ensenso_viewer ${PROJECT_NAME} ${catkin_LIBRARIES} ${Ensenso_LIBRARIES})
 
-target_link_libraries(ensenso_viewer
-	${catkin_LIBRARIES}
-	${OpenCV_LIBRARIES}
-	${Ensenso_LIBRARIES}
-	${PROJECT_NAME}
-)
+add_executable(${PROJECT_NAME}_dump_tool src/dump_tool.cpp)
+target_link_libraries(${PROJECT_NAME}_dump_tool ${PROJECT_NAME} ${catkin_LIBRARIES} ${Ensenso_LIBRARIES})
 
-add_executable(save_on_trigger src/save_on_trigger.cpp)
-
-target_link_libraries(save_on_trigger
-	${catkin_LIBRARIES}
-	${OpenCV_LIBRARIES}
-	${Ensenso_LIBRARIES}
-	${PROJECT_NAME}
-)
-
-install(TARGETS ${PROJECT_NAME}
+install(
+	TARGETS "${PROJECT_NAME}" "${PROJECT_NAME}_dump_tool" "ensenso_viewer"
+	ARCHIVE DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
 	LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
+	RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
 )
 
 install(
-	DIRECTORY include/${PROJECT_NAME}/
+	DIRECTORY "include/${PROJECT_NAME}/"
 	DESTINATION "${CATKIN_PACKAGE_INCLUDE_DESTINATION}"
 )
