@@ -50,42 +50,46 @@ Ensenso::~Ensenso() {
 	nxLibFinalize();
 }
 
-bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const {
-	try {
+bool Ensenso::retrieve(bool trigger, unsigned int timeout, bool stereo, bool overlay) const {
+	NxLibCommand command(trigger ? cmdCapture : cmdRetrieve);
 
-		executeNx(NxLibCommand(cmdDiscardPatterns));
+	setNx(command.parameters()[itmTimeout], int(timeout));
+	if (stereo) setNx(command.parameters()[itmCameras][0], getSerialNumber());
+	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera[itmSerialNumber]));
+	executeNx(command);
 
-		for (int i = 0; i < num_patterns; ++i) {
-			// Capture image with front-light.
-			setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], false);
-			setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], true);
+	if (stereo && !getNx<bool>(command.result()[getSerialNumber()])) return false;
+	if (overlay && !getNx<bool>(command.result()[getOverlaySerialNumber()])) return false;
+	return true;
+}
 
-			NxLibCommand command_capture(cmdCapture);
-			setNx(command_capture.parameters()[itmCameras], ensenso_camera[itmEepromId].asInt());
-			executeNx(command_capture);
+void Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const {
+	executeNx(NxLibCommand(cmdDiscardPatterns));
 
-			setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], false);
-			setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], true);
+	for (int i = 0; i < num_patterns; ++i) {
+		// Capture image with front-light.
+		setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], false);
+		setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], true);
 
-			// Find the pattern.
-			NxLibCommand command_collect_pattern(cmdCollectPattern);
-			setNx(command_collect_pattern.parameters()[itmCameras], ensenso_camera[itmEepromId].asInt());
-			setNx(command_collect_pattern.parameters()[itmDecodeData], true);
-			executeNx(command_collect_pattern);
-		}
+		retrieve(true, 1500, true, false);
+		NxLibCommand command_capture(cmdCapture);
+		executeNx(command_capture);
 
-		/// Get the pose of the pattern.
-		NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
-		executeNx(command_estimate_pose);
-		pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
-		pose.translation() *= 0.001;
+		setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], false);
+		setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], true);
 
-	} catch (std::runtime_error const & e) {
-		DR_INFO("An unexpected error occurred during calibration: " << e.what());
-		return false;
+		// Find the pattern.
+		NxLibCommand command_collect_pattern(cmdCollectPattern);
+		setNx(command_collect_pattern.parameters()[itmCameras], getSerialNumber());
+		setNx(command_collect_pattern.parameters()[itmDecodeData], true);
+		executeNx(command_collect_pattern);
 	}
 
-	return true;
+	/// Get the pose of the pattern.
+	NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
+	executeNx(command_estimate_pose);
+	pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
+	pose.translation() *= 0.001;
 }
 
 cv::Size Ensenso::getIntensitySize() {
@@ -106,9 +110,8 @@ cv::Size Ensenso::getPointCloudSize() {
 	return cv::Size(width, height);
 }
 
-void Ensenso::loadIntensity(cv::Mat & intensity) {
-	// capture images
-	executeNx(NxLibCommand(cmdCapture));
+void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
+	if (capture) this->retrieve(true, 1500, !found_overlay, found_overlay);
 
 	// copy to cv::Mat
 	if (found_overlay) {
@@ -128,16 +131,16 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 	if (error) throw NxError(ensenso_camera[itmParameters], error);
 }
 
-void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi) {
-	setRegionOfInterest(roi);
+void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture) {
+	// Optionally capture new data.
+	if (capture) this->retrieve();
 
-	// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
-	NxLibCommand capture(cmdCapture);
-	setNx(capture.parameters()[itmTimeout], 1500);
-	executeNx(capture); // Capture new data.
+	// Compute the disparity and point map.
+	setRegionOfInterest(roi);
 	executeNx(NxLibCommand(cmdComputeDisparityMap));
 	executeNx(NxLibCommand(cmdComputePointMap));
 
+	// Convert the binary data to a point cloud.
 	cloud = toPointCloud(ensenso_camera[itmImages][itmPointMap]);
 }
 

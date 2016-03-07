@@ -17,9 +17,6 @@ public:
 
 	~Ensenso();
 
-	/// Returns the pose of the camera with respect to the calibration plate.
-	bool calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
-
 	/// Returns the size of the intensity images.
 	cv::Size getIntensitySize() override;
 
@@ -27,36 +24,65 @@ public:
 	cv::Size getPointCloudSize() override;
 
 	/// Loads the intensity image to intensity.
-	void loadIntensity(cv::Mat & intensity) override;
+	/**
+	 * \param capture If true, capture a new image before loading the point cloud.
+	 */
+	void loadIntensity(cv::Mat & intensity, bool capture);
+
+	/// Loads the intensity image to intensity.
+	void loadIntensity(cv::Mat & intensity) override {
+		loadIntensity(intensity, true);
+	}
 
 	/// Loads the camera parameters from a JSON file.
 	void loadParameters(std::string const parameters_file);
+
+	/// Retrieve new data from the camera without sending a software trigger.
+	/**
+	 * \param timeout A timeout in milliseconds.
+	 * \param stereo If true, capture data from the stereo camera.
+	 * \param overlay If true, capture data from the overlay camera.
+	 */
+	bool retrieve(bool trigger = true, unsigned int timeout = 1500, bool stereo = true, bool overlay=true) const;
+
+	/// Returns the pose of the camera with respect to the calibration plate.
+	void calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
+
+	/**
+	 * Loads the pointcloud from depth in the region of interest.
+	 * \param cloud the resulting pointcloud.
+	 * \param roi The region of interest.
+	 * \param capture If true, capture a new image before loading the point cloud.
+	 */
+	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture);
 
 	/**
 	 * Loads the pointcloud from depth in the region of interest.
 	 * \param cloud the resulting pointcloud.
 	 * \param roi The region of interest.
 	 */
-	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect()) override;
+	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect()) override {
+		return loadPointCloud(cloud, roi, true);
+	}
 
-	NxLibItem getNativeCamera() {
+	/// Get the native nxLibItem for the stereo camera.
+	NxLibItem getNativeCamera() const {
 		return ensenso_camera;
 	}
 
-	boost::optional<NxLibItem> getNativeOverlayCamera() {
-		if (found_overlay) {
-			return overlay_camera;
-		} else {
-			return boost::none;
-		}
+	/// Get the native nxLibItem for the overlay camera (if any).
+	boost::optional<NxLibItem> getNativeOverlayCamera() const {
+		return found_overlay ? boost::optional<NxLibItem>{overlay_camera} : boost::none;
 	}
 
-	std::string getOverlaySerialNumber() {
-		return getNx<std::string>(overlay_camera[itmSerialNumber]);
-	}
-
-	std::string getSerialNumber() {
+	/// Get the serial number of the stereo camera.
+	std::string getSerialNumber() const {
 		return getNx<std::string>(ensenso_camera[itmSerialNumber]);
+	}
+
+	/// Get the serial number of the overlay camera or an empty string if there is no overlay camera.
+	std::string getOverlaySerialNumber() const {
+		return found_overlay ? getNx<std::string>(overlay_camera[itmSerialNumber]) : "";
 	}
 
 protected:

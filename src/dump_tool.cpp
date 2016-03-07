@@ -7,12 +7,13 @@ class EnsensoDumpTool {
 	dr::Ensenso ensenso;
 	NxLibItem camera;
 	boost::optional<NxLibItem> overlay;
+	bool software_trigger = false;
 
 	int image_id = 1;
 
 public:
 	EnsensoDumpTool() {
-		camera = ensenso.getNativeCamera();
+		camera  = ensenso.getNativeCamera();
 		overlay = ensenso.getNativeOverlayCamera();
 
 		camera[itmParameters][itmCapture][itmTriggerMode] = valFallingEdge;
@@ -20,19 +21,8 @@ public:
 	}
 
 	void step() {
-		NxLibCommand retrieve{cmdRetrieve};
-		retrieve.parameters()[itmTimeout] = 0;
-		executeNx(retrieve);
-		bool retrieve_overlay = overlay && getNx<bool>(retrieve.result()[ensenso.getOverlaySerialNumber()][itmRetrieved]);
-		bool retrieve_ensenso = getNx<bool>(retrieve.result()[ensenso.getSerialNumber()][itmRetrieved]);
-
-		if (!retrieve_ensenso) {
+		if (!ensenso.retrieve(software_trigger)) {
 			std::cerr << "Failed to retrieve image from ensenso.";
-			return;
-		}
-
-		if (overlay && !retrieve_overlay) {
-			std::cerr << "Failed to retrieve image from overlay camera.";
 			return;
 		}
 
