@@ -2,6 +2,7 @@
 #include "eigen.hpp"
 #include "util.hpp"
 #include "opencv.hpp"
+#include <pcl.hpp>
 
 #include <dr_log/dr_log.hpp>
 #include <dr_util/util.hpp>
@@ -128,53 +129,16 @@ void Ensenso::loadParameters(std::string const parameters_file) {
 }
 
 void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi) {
-	try {
-		setRegionOfInterest(roi);
+	setRegionOfInterest(roi);
 
-		// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
-		NxLibCommand capture(cmdCapture);
-		capture.parameters()[itmTimeout] = 1500;
-		executeNx(capture); // Capture new data.
-		executeNx(NxLibCommand(cmdComputeDisparityMap));
-		executeNx(NxLibCommand(cmdComputePointMap));
+	// Execute the 'Capture', 'ComputeDisparityMap' and 'ComputePointMap' commands
+	NxLibCommand capture(cmdCapture);
+	setNx(capture.parameters()[itmTimeout], 1500);
+	executeNx(capture); // Capture new data.
+	executeNx(NxLibCommand(cmdComputeDisparityMap));
+	executeNx(NxLibCommand(cmdComputePointMap));
 
-		// Get info about the computed point map and copy it into a std::vector
-		double timestamp;
-		std::vector<float> point_map;
-		int width;
-		int height;
-
-		if (found_overlay) {
-			NxLibCommand render_pointmap(cmdRenderPointMap);
-			render_pointmap.parameters()[itmCamera]            = overlay_camera[itmSerialNumber].asString();
-			render_pointmap.parameters()[itmCameras]           = ensenso_camera[itmSerialNumber].asString();
-			render_pointmap.parameters()[itmNear]              = 50; // must be set
-			executeNx(render_pointmap);
-
-			root[itmImages][itmRenderPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
-			root[itmImages][itmRenderPointMap].getBinaryData(point_map, 0);
-		} else {
-			ensenso_camera[itmImages][itmPointMap].getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
-			ensenso_camera[itmImages][itmPointMap].getBinaryData(point_map, 0);
-		}
-
-		// Copy point cloud and convert in meters
-		cloud.header.stamp    = ensensoStampToPcl(timestamp);
-		cloud.header.frame_id = "/camera_link";
-		cloud.width           = width;
-		cloud.height          = height;
-		cloud.is_dense        = false;
-		cloud.resize(height * width);
-
-		// Copy data in point cloud (and convert milimeters in meters)
-		for (size_t i = 0; i < point_map.size (); i += 3) {
-			cloud.points[i / 3].x = point_map[i] / 1000.0;
-			cloud.points[i / 3].y = point_map[i + 1] / 1000.0;
-			cloud.points[i / 3].z = point_map[i + 2] / 1000.0;
-		}
-	} catch (NxLibException const & e) {
-		throw NxError(e);
-	}
+	cloud = toPointCloud(ensenso_camera[itmImages][itmPointMap]);
 }
 
 void Ensenso::setRegionOfInterest(cv::Rect const & roi) {

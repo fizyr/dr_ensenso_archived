@@ -34,6 +34,7 @@ add_library(${PROJECT_NAME}
 	src/util.cpp
 	src/eigen.cpp
 	src/opencv.cpp
+	src/pcl.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Ensenso_LIBS})
 
