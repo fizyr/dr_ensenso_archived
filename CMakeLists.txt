@@ -15,9 +15,10 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(OpenCV)
 find_package(Ensenso)
+find_package(Boost)
 
 catkin_package(
-	INCLUDE_DIRS include ${Ensenso_INCLUDE_DIRS}
+	INCLUDE_DIRS include ${Ensenso_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS}
 	LIBRARIES ${PROJECT_NAME} ${Ensenso_LIBRARIES}
 	CATKIN_DEPENDS dr_camera
 )
@@ -27,6 +28,7 @@ dr_include_directories(
 	include/${PROJECT_NAME}
 	${catkin_INCLUDE_DIRS}
 	${Ensenso_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS}
 )
 
 add_library(${PROJECT_NAME}
@@ -41,6 +43,15 @@ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${
 add_executable(ensenso_viewer src/ensenso_viewer.cpp)
 
 target_link_libraries(ensenso_viewer
+	${catkin_LIBRARIES}
+	${OpenCV_LIBRARIES}
+	${Ensenso_LIBRARIES}
+	${PROJECT_NAME}
+)
+
+add_executable(save_on_trigger src/save_on_trigger.cpp)
+
+target_link_libraries(save_on_trigger
 	${catkin_LIBRARIES}
 	${OpenCV_LIBRARIES}
 	${Ensenso_LIBRARIES}

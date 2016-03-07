@@ -1,4 +1,5 @@
 #pragma once
+#include "util.hpp"
 
 #include <dr_camera/intensity_camera.hpp>
 #include <dr_camera/depth_camera.hpp>
@@ -6,6 +7,7 @@
 #include <dr_camera_parameters/intrinsic_parameters.hpp>
 
 #include <ensenso/nxLib.h>
+#include <boost/optional.hpp>
 
 namespace dr {
 
@@ -36,6 +38,26 @@ public:
 	 * \param roi The region of interest.
 	 */
 	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect()) override;
+
+	NxLibItem getNativeCamera() {
+		return ensenso_camera;
+	}
+
+	boost::optional<NxLibItem> getNativeOverlayCamera() {
+		if (found_overlay) {
+			return overlay_camera;
+		} else {
+			return boost::none;
+		}
+	}
+
+	std::string getOverlaySerialNumber() {
+		return getNx<std::string>(overlay_camera[itmSerialNumber]);
+	}
+
+	std::string getSerialNumber() {
+		return getNx<std::string>(ensenso_camera[itmSerialNumber]);
+	}
 
 protected:
 	/// The root EnsensoSDK node.
