@@ -22,6 +22,14 @@ boost::optional<NxLibItem> findCameraByLink(std::string const & serial) {
 	return {};
 }
 
+boost::optional<NxLibItem> findCameraByType(std::string const & type) {
+	NxLibItem cameras = NxLibItem{}[itmCameras][itmBySerialNo];
+	for (int i = 0; i < cameras.count(); ++i) {
+		if (getNx<std::string>(cameras[i][itmType]) == type) return cameras[i];
+	}
+	return {};
+}
+
 boost::optional<NxLibItem> openCameraBySerial(std::string const & serial) {
 	auto camera = findCameraBySerial(serial);
 	if (!camera) return {};
@@ -50,6 +58,17 @@ boost::optional<NxLibItem> openCameraByLink(std::string const & serial) {
 
 	NxLibCommand command(cmdOpen);
 	setNx(command.parameters()[itmCameras], serial);
+	executeNx(command);
+
+	return camera;
+}
+
+boost::optional<NxLibItem> openCameraByType(std::string const & type) {
+	auto camera = findCameraByType(type);
+	if (!camera) return {};
+
+	NxLibCommand command(cmdOpen);
+	setNx(command.parameters()[itmCameras], getNx<std::string>((*camera)[itmSerialNumber]));
 	executeNx(command);
 
 	return camera;

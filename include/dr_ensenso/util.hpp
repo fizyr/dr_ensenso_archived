@@ -20,6 +20,14 @@ boost::optional<NxLibItem> findCameraByEepromId(int eeprom_id);
 /// Find a camera that is linked to another camera given by serial.
 boost::optional<NxLibItem> findCameraByLink(std::string const & serial);
 
+/// Find a camera by type.
+/**
+ * If multiple cameras of the requested type are available, it is unspecified which one will be selected.
+ *
+ * \return An NxLibItem representing a camera of the requested type if one can be found.
+ */
+boost::optional<NxLibItem> findCameraByType(std::string const & type);
+
 /// Find and open a camera by serial number.
 /**
  * \return The NxLibItem representing the found camera or an empty optional.
@@ -40,6 +48,14 @@ boost::optional<NxLibItem> openCameraByEepromId(int eeprom_id);
  * \throws if opening the camera fails.
  */
 boost::optional<NxLibItem> openCameraByLink(std::string const & serial);
+
+/// Find and open a camera by type.
+/**
+ * If multiple cameras of the requested type are available, it is unspecified which one will be selected.
+ * \return An NxLibItem representing a camera of the requested type if one can be found.
+ * \throws if opening the camera fails.
+ */
+boost::optional<NxLibItem> openCameraByType(std::string const & type);
 
 /// Execute an NxLibCommand.
 /**
