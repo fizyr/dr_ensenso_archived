@@ -114,13 +114,7 @@ void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
 }
 
 void Ensenso::loadParameters(std::string const parameters_file) {
-	std::ifstream file(parameters_file);
-	std::stringstream buffer;
-	buffer << file.rdbuf();
-
-	int error = 0;
-	ensenso_camera[itmParameters].setJson(&error, buffer.str(), true);
-	if (error) throw NxError(ensenso_camera[itmParameters], error);
+	setNxJsonFile(ensenso_camera[itmParameters], parameters_file);
 }
 
 void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture) {
