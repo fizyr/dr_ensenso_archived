@@ -11,38 +11,17 @@
 
 namespace dr {
 
-Ensenso::Ensenso(bool connect_overlay): found_overlay(false) {
+Ensenso::Ensenso(bool connect_overlay) {
 	// initialize nxLib
 	nxLibInitialize();
 
-	// connect camera's
-	NxLibItem cams = root[itmCameras][itmBySerialNo];
+	// Try to find a stereo camera.
+	boost::optional<NxLibItem> camera = openCameraByType(valStereo);
+	if (!camera) throw std::runtime_error("Please connect a single stereo camera to your computer.");
+	ensenso_camera = *camera;
 
-	// create an object referencing the camera's tree item, for easier access:
-	for (int n = 0; n < cams.count(); n++) {
-		if (cams[n][itmType] == valStereo) {
-			ensenso_camera = cams[n];
-		} else if (cams[n][itmType] == valMonocular && connect_overlay) {
-			overlay_camera = cams[n];
-			found_overlay = true;
-
-			std::string serial = overlay_camera[itmSerialNumber].asString();
-			NxLibCommand open(cmdOpen);
-			open.parameters()[itmCameras] = serial;
-			executeNx(open);
-		}
-	}
-
-	// found camera?
-	if (!ensenso_camera.exists() || (ensenso_camera[itmType] != valStereo)) {
-		throw std::runtime_error("Please connect a single stereo camera to your computer.");
-	}
-
-	// open camera
-	std::string serial = ensenso_camera[itmSerialNumber].asString();
-	NxLibCommand open(cmdOpen);
-	open.parameters()[itmCameras] = serial;
-	executeNx(open);
+	// Get the linked overlay camera.
+	if (connect_overlay) overlay_camera = openCameraByLink(getSerialNumber());
 }
 
 Ensenso::~Ensenso() {
@@ -50,11 +29,11 @@ Ensenso::~Ensenso() {
 	nxLibFinalize();
 }
 bool Ensenso::trigger(bool stereo, bool overlay) const {
-	overlay = overlay && found_overlay;
+	overlay = overlay && overlay_camera;
 
 	NxLibCommand command(cmdTrigger);
 	if (stereo) setNx(command.parameters()[itmCameras][0], getSerialNumber());
-	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera[itmSerialNumber]));
+	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera.get()[itmSerialNumber]));
 	executeNx(command);
 
 	if (stereo && !getNx<bool>(command.result()[getSerialNumber()][itmTriggered])) return false;
@@ -63,12 +42,12 @@ bool Ensenso::trigger(bool stereo, bool overlay) const {
 }
 
 bool Ensenso::retrieve(bool trigger, unsigned int timeout, bool stereo, bool overlay) const {
-	overlay = overlay && found_overlay;
+	overlay = overlay && overlay_camera;
 
 	NxLibCommand command(trigger ? cmdCapture : cmdRetrieve);
 	setNx(command.parameters()[itmTimeout], int(timeout));
 	if (stereo) setNx(command.parameters()[itmCameras][0], getSerialNumber());
-	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera[itmSerialNumber]));
+	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera.get()[itmSerialNumber]));
 	executeNx(command);
 
 	if (stereo && !getNx<bool>(command.result()[getSerialNumber()][itmRetrieved])) return false;
@@ -109,7 +88,7 @@ cv::Size Ensenso::getIntensitySize() {
 	int width, height;
 
 	try {
-		overlay_camera[itmImages][itmRaw].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
+		overlay_camera.get()[itmImages][itmRaw].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
 	} catch (NxLibException const & e) {
 		throw NxError(e);
 	}
@@ -124,11 +103,11 @@ cv::Size Ensenso::getPointCloudSize() {
 }
 
 void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
-	if (capture) this->retrieve(true, 1500, !found_overlay, found_overlay);
+	if (capture) this->retrieve(true, 1500, !overlay_camera, !!overlay_camera);
 
 	// copy to cv::Mat
-	if (found_overlay) {
-		cv::cvtColor(toCvMat(overlay_camera[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
+	if (overlay_camera) {
+		cv::cvtColor(toCvMat(overlay_camera.get()[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
 	} else {
 		cv::cvtColor(toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]), intensity, cv::COLOR_GRAY2BGR);
 	}

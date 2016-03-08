@@ -87,7 +87,7 @@ public:
 
 	/// Get the native nxLibItem for the overlay camera (if any).
 	boost::optional<NxLibItem> getNativeOverlayCamera() const {
-		return found_overlay ? boost::optional<NxLibItem>{overlay_camera} : boost::none;
+		return overlay_camera;
 	}
 
 	/// Get the serial number of the stereo camera.
@@ -97,7 +97,7 @@ public:
 
 	/// Get the serial number of the overlay camera or an empty string if there is no overlay camera.
 	std::string getOverlaySerialNumber() const {
-		return found_overlay ? getNx<std::string>(overlay_camera[itmSerialNumber]) : "";
+		return overlay_camera ? getNx<std::string>(overlay_camera.get()[itmSerialNumber]) : "";
 	}
 
 protected:
@@ -107,11 +107,8 @@ protected:
 	/// The Ensenso camera node.
 	NxLibItem ensenso_camera;
 
-	/// True if a connected overlay camera is found.
-	bool found_overlay;
-
 	/// The overlay camera node.
-	NxLibItem overlay_camera;
+	boost::optional<NxLibItem> overlay_camera;
 
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
 	void setRegionOfInterest(cv::Rect const & roi);
