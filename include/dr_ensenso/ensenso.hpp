@@ -63,6 +63,14 @@ public:
 	 */
 	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture);
 
+	using PointCloudCamera::getPointCloud;
+
+	pcl::PointCloud<pcl::PointXYZ> getPointCloud(cv::Rect roi, bool capture) {
+		pcl::PointCloud<pcl::PointXYZ> result;
+		loadPointCloud(result, roi, capture);
+		return result;
+	}
+
 	/**
 	 * Loads the pointcloud from depth in the region of interest.
 	 * \param cloud the resulting pointcloud.
