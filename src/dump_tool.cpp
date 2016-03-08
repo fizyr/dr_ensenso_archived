@@ -47,12 +47,9 @@ public:
 	Ensenso const & camera() const { return ensenso_; }
 
 	/// Construct an ensenso dump tool.
-	EnsensoDumpTool(bool software_trigger) {
+	EnsensoDumpTool() {
 		camera_  = ensenso_.native();
 		overlay_ = ensenso_.nativeOverlay();
-
-		setNx(camera_[itmParameters][itmCapture][itmTriggerMode], software_trigger ? valSoftware : valFallingEdge);
-		if (overlay_) setNx((*overlay_)[itmParameters][itmCapture][itmTriggerMode], software_trigger ? valSoftware : valFallingEdge);
 	}
 
 	/// Destructor.
@@ -69,6 +66,14 @@ public:
 	void loadOverlayParameters(std::string const & filename) {
 		if (!overlay_) throw std::runtime_error("No overlay camera linked. Can not set parameters.");
 		setNxJsonFile(overlay_.get()[itmParameters], filename);
+	}
+
+	/// Set the connected cameras hardware or software triggered.
+	void hardwareTriggered(bool enabled) {
+		setNx(camera_[itmParameters][itmCapture][itmTriggerMode], enabled ? valFallingEdge : valSoftware);
+		if (overlay_) {
+			setNx((*overlay_)[itmParameters][itmCapture][itmTriggerMode], enabled ? valFallingEdge : valSoftware);
+		}
 	}
 
 	/// Do a single trigger, retrieve, dump step.
@@ -125,9 +130,11 @@ int main() {
 	// Create and configure Ensenso
 	std::cerr << "Initializing camera. This may take some time.\n";
 
-	dr::EnsensoDumpTool dump_tool(false);
+	dr::EnsensoDumpTool dump_tool;
 	::dump_tool = &dump_tool;
 	std::signal(SIGINT, signal_handler);
+
+	dump_tool.hardwareTriggered(true);
 
 	std::cerr << "Camera initialized.\n";
 	std::cerr << "Starting camera capture.\n";
