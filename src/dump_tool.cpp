@@ -1,6 +1,6 @@
 #include "ensenso.hpp"
 #include "util.hpp"
-#include "opencv.hpp"
+#include "dump.hpp"
 
 #include <dr_pcl/pointcloud_tools.hpp>
 #include <dr_log/dr_log.hpp>
@@ -13,17 +13,6 @@
 #include <csignal>
 
 namespace dr {
-
-
-// Format a timestamp (microseconds since 1970) as a human readable string.
-std::string formatTime(std::uint64_t timestamp) {
-	boost::posix_time::ptime time(boost::gregorian::date(1970, 1, 1), boost::posix_time::microseconds(timestamp));
-
-	std::stringstream buffer;
-	buffer.imbue(std::locale(buffer.getloc(), new boost::posix_time::time_facet("%Y-%m-%d %H-%M-%S.%f")));
-	buffer << time;
-	return buffer.str();
-}
 
 /// Tool for dumping live data from an Ensenso camera to files.
 class EnsensoDumpTool {
@@ -44,10 +33,10 @@ class EnsensoDumpTool {
 
 public:
 	struct {
-		bool point_cloud       = true;
-		bool disparity         = true;
 		bool stereo_raw        = true;
 		bool stereo_rectified  = true;
+		bool disparity         = true;
+		bool point_cloud       = true;
 		bool overlay_raw       = true;
 		bool overlay_rectified = true;
 		bool calibration       = true;
@@ -115,46 +104,10 @@ public:
 	}
 
 protected:
-	/// Dump a point cloud with a given description.
-	void dumpCloud(pcl::PointCloud<pcl::PointXYZ> const & cloud, std::string const & description) {
-		saveCloud(output_directory + "/" + formatTime(cloud.header.stamp) + "_" + description + ".pcd", cloud);
-	}
-
-	/// Dump an image from a binary node with a given description.
-	void dumpImage(NxLibItem const & item, std::string const & description, std::uint64_t timestamp) {
-		NxLibCommand command(cmdSaveImage);
-		setNx(command.parameters()[itmNode], item.path);
-		setNx(command.parameters()[itmFilename], output_directory + "/" + formatTime(timestamp) + "_" + description + ".png");
-		executeNx(command);
-	}
-
-	/// Dump all stereo images from a node, possibly once for each flewview image.
-	void dumpStereoImages(NxLibItem const & item, std::string const & description, std::uint64_t timestamp) {
-		NxLibCommand command(cmdSaveImage);
-		if (item.isObject()) {
-			dumpImage(item[itmLeft], description + "_left", timestamp);
-			dumpImage(item[itmRight], description + "_right", timestamp);
-		} else {
-			for (int i = 0; i < item.count(); ++i) {
-				dumpImage(item[i][itmLeft], description + "_left_" + std::to_string(i), timestamp);
-				dumpImage(item[i][itmRight], description + "_right" + std::to_string(i), timestamp);
-			}
-		}
-	}
-
 	/// Dump all data
 	void dumpData() {
-		pcl::PointCloud<pcl::PointXYZ> cloud = ensenso_.getPointCloud(cv::Rect(), false);
-		std::uint64_t timestamp = cloud.header.stamp;
-		std::cerr << "Retrieved data with timestamp " << formatTime(timestamp) << ".\n";
-		if (dump.point_cloud) dumpCloud(cloud, "point_cloud");
-
-		if (dump.disparity)        dumpImage(camera_[itmImages][itmDisparityMap], "disparity", timestamp);
-		if (dump.stereo_raw)       dumpStereoImages(camera_[itmImages][itmRaw], "stereo_raw", timestamp);
-		if (dump.stereo_rectified) dumpStereoImages(camera_[itmImages][itmRectified], "stereo_rectified", timestamp);
-
-		if (overlay_ && dump.overlay_raw)       dumpImage((*overlay_)[itmImages][itmRaw],       "overlay_raw",       timestamp);
-		if (overlay_ && dump.overlay_rectified) dumpImage((*overlay_)[itmImages][itmRectified], "overlay_rectified", timestamp);
+		dumpCameraImages(camera_, output_directory + "/", "", default_time_format, dump.stereo_raw, dump.stereo_rectified, dump.disparity, dump.point_cloud);
+		if (overlay_) dumpCameraImages(*overlay_, output_directory + "/", "", default_time_format, dump.overlay_raw, dump.overlay_rectified, false, false);
 	}
 };
 
