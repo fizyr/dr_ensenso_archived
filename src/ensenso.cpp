@@ -150,17 +150,17 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi,
 
 void Ensenso::setRegionOfInterest(cv::Rect const & roi) {
 	if (roi.area() == 0) {
-		ensenso_camera[itmParameters][itmCapture][itmUseDisparityMapAreaOfInterest] = false;
+		setNx(ensenso_camera[itmParameters][itmCapture][itmUseDisparityMapAreaOfInterest], false);
 
 		if (ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest].exists()) {
 			ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest].erase();
 		}
 	} else {
-		ensenso_camera[itmParameters][itmCapture][itmUseDisparityMapAreaOfInterest]          = true;
-		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][0]     = roi.tl().x;
-		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][1]     = roi.tl().y;
-		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][0] = roi.br().x;
-		ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][1] = roi.br().y;
+		setNx(ensenso_camera[itmParameters][itmCapture][itmUseDisparityMapAreaOfInterest],          true);
+		setNx(ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][0],     roi.tl().x);
+		setNx(ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmLeftTop][1],     roi.tl().y);
+		setNx(ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][0], roi.br().x);
+		setNx(ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][1], roi.br().y);
 	}
 
 }
