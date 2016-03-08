@@ -37,6 +37,13 @@ public:
 	/// Loads the camera parameters from a JSON file.
 	void loadParameters(std::string const parameters_file);
 
+	/// Trigger data acquisition on the camera.
+	/**
+	 * \param stereo If true, capture data from the stereo camera.
+	 * \param overlay If true, capture data from the overlay camera.
+	 */
+	bool trigger(bool stereo = true, bool overlay=true) const;
+
 	/// Retrieve new data from the camera without sending a software trigger.
 	/**
 	 * \param timeout A timeout in milliseconds.
