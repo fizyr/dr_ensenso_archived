@@ -28,6 +28,16 @@ Ensenso::~Ensenso() {
 	executeNx(NxLibCommand(cmdClose));
 	nxLibFinalize();
 }
+
+void Ensenso::loadParameters(std::string const parameters_file) {
+	setNxJsonFile(ensenso_camera[itmParameters], parameters_file);
+}
+
+void Ensenso::loadOverlayParameters(std::string const parameters_file) {
+	if (!overlay_camera) throw std::runtime_error("No overlay camera found. Can not load overlay parameters.");
+	setNxJsonFile(overlay_camera.get()[itmParameters], parameters_file);
+}
+
 bool Ensenso::trigger(bool stereo, bool overlay) const {
 	overlay = overlay && overlay_camera;
 
@@ -111,10 +121,6 @@ void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
 	} else {
 		cv::cvtColor(toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]), intensity, cv::COLOR_GRAY2BGR);
 	}
-}
-
-void Ensenso::loadParameters(std::string const parameters_file) {
-	setNxJsonFile(ensenso_camera[itmParameters], parameters_file);
 }
 
 void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture) {

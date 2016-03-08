@@ -37,6 +37,9 @@ public:
 	/// Loads the camera parameters from a JSON file.
 	void loadParameters(std::string const parameters_file);
 
+	/// Loads the overlay camera parameters from a JSON file.
+	void loadOverlayParameters(std::string const parameters_file);
+
 	/// Trigger data acquisition on the camera.
 	/**
 	 * \param stereo If true, capture data from the stereo camera.
