@@ -106,14 +106,14 @@ public:
 protected:
 	/// Dump a point cloud with a given description.
 	void dumpCloud(pcl::PointCloud<pcl::PointXYZ> const & cloud, std::string const & description) {
-		saveCloud(formatTime(cloud.header.stamp) + "_" + description + ".pcd", cloud);
+		saveCloud(output_directory + "/" + formatTime(cloud.header.stamp) + "_" + description + ".pcd", cloud);
 	}
 
 	/// Dump an image from a binary node with a given description.
 	void dumpImage(NxLibItem const & item, std::string const & description, std::uint64_t timestamp) {
 		NxLibCommand command(cmdSaveImage);
 		setNx(command.parameters()[itmNode], item.path);
-		setNx(command.parameters()[itmFilename], formatTime(timestamp) + "_" + description + ".png");
+		setNx(command.parameters()[itmFilename], output_directory + "/" + formatTime(timestamp) + "_" + description + ".png");
 		executeNx(command);
 	}
 
