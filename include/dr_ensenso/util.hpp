@@ -7,6 +7,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <cstdint>
 
 
 namespace dr {
@@ -74,6 +75,9 @@ T getNx(NxLibItem const & item, std::string const & what = "") {
 	if (error) throw NxError(item, error, what);
 	return result;
 }
+
+/// Get the timestamp of a binary node as microseconds since January 1 1970 UTC.
+std::int64_t getNxBinaryTimestamp(NxLibItem const & item, std::string const & what = "");
 
 /// Set the value of an NxLibItem.
 /**

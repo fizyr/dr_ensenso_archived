@@ -31,12 +31,13 @@ dr_include_directories(
 )
 
 add_library(${PROJECT_NAME}
-	src/ensenso.cpp
-	src/util.cpp
-	src/error.cpp
+	src/dump.cpp
 	src/eigen.cpp
+	src/ensenso.cpp
+	src/error.cpp
 	src/opencv.cpp
 	src/pcl.cpp
+	src/util.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Ensenso_LIBS})
 

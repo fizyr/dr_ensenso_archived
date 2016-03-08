@@ -68,6 +68,14 @@ void executeNx(NxLibCommand const & command, std::string const & what) {
 	if (error) throwCommandError(error, what);
 }
 
+std::int64_t getNxBinaryTimestamp(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	double timestamp = 0;
+	item.getBinaryDataInfo(&error, nullptr, nullptr, nullptr, nullptr, nullptr, &timestamp);
+	if (error) throw NxError(item, error, what);
+	return (timestamp - 11644473600.0) * 1e6; // Correct for epoch and turn into microseconds.
+}
+
 void setNxJson(NxLibItem const & item, std::string const & json, std::string const & what) {
 	int error = 0;
 	item.setJson(&error, json, true);
