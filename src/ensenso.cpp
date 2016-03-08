@@ -2,17 +2,17 @@
 #include "eigen.hpp"
 #include "util.hpp"
 #include "opencv.hpp"
-#include <pcl.hpp>
+#include "pcl.hpp"
 
 #include <dr_log/dr_log.hpp>
 #include <dr_util/util.hpp>
 
-#include <fstream>
+#include <stdexcept>
 
 namespace dr {
 
 Ensenso::Ensenso(bool connect_overlay) {
-	// initialize nxLib
+	// Initialize nxLib.
 	nxLibInitialize();
 
 	// Try to find a stereo camera.
@@ -21,7 +21,7 @@ Ensenso::Ensenso(bool connect_overlay) {
 	ensenso_camera = *camera;
 
 	// Get the linked overlay camera.
-	if (connect_overlay) overlay_camera = openCameraByLink(getSerialNumber());
+	if (connect_overlay) overlay_camera = openCameraByLink(serialNumber());
 }
 
 Ensenso::~Ensenso() {
@@ -42,12 +42,12 @@ bool Ensenso::trigger(bool stereo, bool overlay) const {
 	overlay = overlay && overlay_camera;
 
 	NxLibCommand command(cmdTrigger);
-	if (stereo) setNx(command.parameters()[itmCameras][0], getSerialNumber());
+	if (stereo) setNx(command.parameters()[itmCameras][0], serialNumber());
 	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera.get()[itmSerialNumber]));
 	executeNx(command);
 
-	if (stereo && !getNx<bool>(command.result()[getSerialNumber()][itmTriggered])) return false;
-	if (overlay && !getNx<bool>(command.result()[getOverlaySerialNumber()][itmTriggered])) return false;
+	if (stereo && !getNx<bool>(command.result()[serialNumber()][itmTriggered])) return false;
+	if (overlay && !getNx<bool>(command.result()[overlaySerialNumber()][itmTriggered])) return false;
 	return true;
 }
 
@@ -56,12 +56,12 @@ bool Ensenso::retrieve(bool trigger, unsigned int timeout, bool stereo, bool ove
 
 	NxLibCommand command(trigger ? cmdCapture : cmdRetrieve);
 	setNx(command.parameters()[itmTimeout], int(timeout));
-	if (stereo) setNx(command.parameters()[itmCameras][0], getSerialNumber());
+	if (stereo) setNx(command.parameters()[itmCameras][0], serialNumber());
 	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera.get()[itmSerialNumber]));
 	executeNx(command);
 
-	if (stereo && !getNx<bool>(command.result()[getSerialNumber()][itmRetrieved])) return false;
-	if (overlay && !getNx<bool>(command.result()[getOverlaySerialNumber()][itmRetrieved])) return false;
+	if (stereo && !getNx<bool>(command.result()[serialNumber()][itmRetrieved])) return false;
+	if (overlay && !getNx<bool>(command.result()[overlaySerialNumber()][itmRetrieved])) return false;
 	return true;
 }
 
@@ -82,12 +82,12 @@ void Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const 
 
 		// Find the pattern.
 		NxLibCommand command_collect_pattern(cmdCollectPattern);
-		setNx(command_collect_pattern.parameters()[itmCameras], getSerialNumber());
+		setNx(command_collect_pattern.parameters()[itmCameras], serialNumber());
 		setNx(command_collect_pattern.parameters()[itmDecodeData], true);
 		executeNx(command_collect_pattern);
 	}
 
-	/// Get the pose of the pattern.
+	// Get the pose of the pattern.
 	NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
 	executeNx(command_estimate_pose);
 	pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
@@ -115,7 +115,7 @@ cv::Size Ensenso::getPointCloudSize() {
 void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
 	if (capture) this->retrieve(true, 1500, !overlay_camera, !!overlay_camera);
 
-	// copy to cv::Mat
+	// Copy to cv::Mat.
 	if (overlay_camera) {
 		cv::cvtColor(toCvMat(overlay_camera.get()[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
 	} else {
@@ -128,7 +128,7 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi,
 	if (capture) this->retrieve();
 
 	setRegionOfInterest(roi);
-	std::string serial = getSerialNumber();
+	std::string serial = serialNumber();
 
 	// Compute disparity.
 	{

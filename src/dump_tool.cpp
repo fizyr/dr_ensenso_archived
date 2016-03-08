@@ -48,8 +48,8 @@ public:
 
 	/// Construct an ensenso dump tool.
 	EnsensoDumpTool(bool software_trigger) {
-		camera_  = ensenso_.getNativeCamera();
-		overlay_ = ensenso_.getNativeOverlayCamera();
+		camera_  = ensenso_.native();
+		overlay_ = ensenso_.nativeOverlay();
 
 		setNx(camera_[itmParameters][itmCapture][itmTriggerMode], software_trigger ? valSoftware : valFallingEdge);
 		if (overlay_) setNx((*overlay_)[itmParameters][itmCapture][itmTriggerMode], software_trigger ? valSoftware : valFallingEdge);
@@ -85,7 +85,7 @@ public:
 		// Also get rectified overlay image.
 		if (overlay_ && dump.overlay_rectified) {
 			NxLibCommand command{cmdRectifyImages};
-			setNx(command.parameters()[itmCameras], ensenso_.getOverlaySerialNumber());
+			setNx(command.parameters()[itmCameras], ensenso_.overlaySerialNumber());
 			executeNx(command);
 		}
 

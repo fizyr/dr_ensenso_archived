@@ -12,26 +12,41 @@
 namespace dr {
 
 class Ensenso : public IntensityCamera, public PointCloudCamera {
+protected:
+	/// The root EnsensoSDK node.
+	NxLibItem root;
+
+	/// The Ensenso camera node.
+	NxLibItem ensenso_camera;
+
+	/// The overlay camera node.
+	boost::optional<NxLibItem> overlay_camera;
+
 public:
+	/// Connect to an ensenso camera.
 	Ensenso(bool connect_overlay = true);
 
+	/// Destructor.
 	~Ensenso();
 
-	/// Returns the size of the intensity images.
-	cv::Size getIntensitySize() override;
+	/// Get the native nxLibItem for the stereo camera.
+	NxLibItem native() const {
+		return ensenso_camera;
+	}
 
-	/// Returns the size of the depth images.
-	cv::Size getPointCloudSize() override;
+	/// Get the native nxLibItem for the overlay camera (if any).
+	boost::optional<NxLibItem> nativeOverlay() const {
+		return overlay_camera;
+	}
 
-	/// Loads the intensity image to intensity.
-	/**
-	 * \param capture If true, capture a new image before loading the point cloud.
-	 */
-	void loadIntensity(cv::Mat & intensity, bool capture);
+	/// Get the serial number of the stereo camera.
+	std::string serialNumber() const {
+		return getNx<std::string>(ensenso_camera[itmSerialNumber]);
+	}
 
-	/// Loads the intensity image to intensity.
-	void loadIntensity(cv::Mat & intensity) override {
-		loadIntensity(intensity, true);
+	/// Get the serial number of the overlay camera or an empty string if there is no overlay camera.
+	std::string overlaySerialNumber() const {
+		return overlay_camera ? getNx<std::string>(overlay_camera.get()[itmSerialNumber]) : "";
 	}
 
 	/// Loads the camera parameters from a JSON file.
@@ -58,24 +73,33 @@ public:
 	/// Returns the pose of the camera with respect to the calibration plate.
 	void calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
 
+	/// Returns the size of the intensity images.
+	cv::Size getIntensitySize() override;
+
+	/// Returns the size of the depth images.
+	cv::Size getPointCloudSize() override;
+
+	/// Loads the intensity image to intensity.
 	/**
-	 * Loads the pointcloud from depth in the region of interest.
+	 * \param capture If true, capture a new image before loading the point cloud.
+	 */
+	void loadIntensity(cv::Mat & intensity, bool capture);
+
+	/// Loads the intensity image to intensity.
+	void loadIntensity(cv::Mat & intensity) override {
+		loadIntensity(intensity, true);
+	}
+
+	/// Loads the pointcloud from depth in the region of interest.
+	/**
 	 * \param cloud the resulting pointcloud.
 	 * \param roi The region of interest.
 	 * \param capture If true, capture a new image before loading the point cloud.
 	 */
 	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture);
 
-	using PointCloudCamera::getPointCloud;
-
-	pcl::PointCloud<pcl::PointXYZ> getPointCloud(cv::Rect roi, bool capture) {
-		pcl::PointCloud<pcl::PointXYZ> result;
-		loadPointCloud(result, roi, capture);
-		return result;
-	}
-
+	/// Loads the pointcloud from depth in the region of interest.
 	/**
-	 * Loads the pointcloud from depth in the region of interest.
 	 * \param cloud the resulting pointcloud.
 	 * \param roi The region of interest.
 	 */
@@ -83,36 +107,21 @@ public:
 		return loadPointCloud(cloud, roi, true);
 	}
 
-	/// Get the native nxLibItem for the stereo camera.
-	NxLibItem getNativeCamera() const {
-		return ensenso_camera;
-	}
+	// Don't hide the base class verion of getPointCloud.
+	using PointCloudCamera::getPointCloud;
 
-	/// Get the native nxLibItem for the overlay camera (if any).
-	boost::optional<NxLibItem> getNativeOverlayCamera() const {
-		return overlay_camera;
-	}
-
-	/// Get the serial number of the stereo camera.
-	std::string getSerialNumber() const {
-		return getNx<std::string>(ensenso_camera[itmSerialNumber]);
-	}
-
-	/// Get the serial number of the overlay camera or an empty string if there is no overlay camera.
-	std::string getOverlaySerialNumber() const {
-		return overlay_camera ? getNx<std::string>(overlay_camera.get()[itmSerialNumber]) : "";
+	/// Get a pointlcoud from the camera.
+	/**
+	 * \param roi The region of interest.
+	 * \param capture If true, capture a new image before loading the point cloud.
+	 */
+	pcl::PointCloud<pcl::PointXYZ> getPointCloud(cv::Rect roi, bool capture) {
+		pcl::PointCloud<pcl::PointXYZ> result;
+		loadPointCloud(result, roi, capture);
+		return result;
 	}
 
 protected:
-	/// The root EnsensoSDK node.
-	NxLibItem root;
-
-	/// The Ensenso camera node.
-	NxLibItem ensenso_camera;
-
-	/// The overlay camera node.
-	boost::optional<NxLibItem> overlay_camera;
-
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
 	void setRegionOfInterest(cv::Rect const & roi);
 
