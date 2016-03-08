@@ -71,6 +71,17 @@ public:
 		std::cerr << "Closing the camera. This may take some time.\n";
 	}
 
+	/// Load camera parameters for the main stereo camera.
+	void loadCameraParameters(std::string const & filename) {
+		setNxJsonFile(camera_[itmParameters], filename);
+	}
+
+	/// Load camera parameters for the linked overlay camera.
+	void loadOverlayParameters(std::string const & filename) {
+		if (!overlay_) throw std::runtime_error("No overlay camera linked. Can not set parameters.");
+		setNxJsonFile(overlay_.get()[itmParameters], filename);
+	}
+
 	/// Do a single trigger, retrieve, dump step.
 	void step() {
 		ensenso_.trigger();
