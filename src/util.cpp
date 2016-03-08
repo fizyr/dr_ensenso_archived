@@ -8,7 +8,7 @@ namespace {
 	}
 
 	std::string makeErrorMsg(NxLibCommand const & command, NxLibException const & error, std::string const & what) {
-		if (error.getErrorCode() == 17) {
+		if (error.getErrorCode() == NxLibExecutionFailed) {
 			std::string symbol = command.result()[itmErrorSymbol].asString();
 			std::string message = command.result()[itmErrorText].asString();
 			return what + (what.empty() ? "" : ": ") + "Failed to execute NxLibCommand: error " + symbol + ": " + message;
