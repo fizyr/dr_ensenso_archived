@@ -76,7 +76,7 @@ public:
 		}
 	}
 
-	/// Do a single trigger, retrieve, dump step.
+	/// Do a single trigger, retrieve, process, dump step.
 	void step() {
 		ensenso_.trigger();
 		try {
@@ -85,6 +85,20 @@ public:
 			// Ignore timeouts, throw the rest of the errors.
 			if (e.error_symbol() == errCaptureTimeout) return;
 			throw;
+		}
+
+		// Compute disparity if needed.
+		if (dump.disparity || dump.point_cloud) {
+			NxLibCommand command(cmdComputeDisparityMap);
+			setNx(command.parameters()[itmCameras], ensenso_.serialNumber());
+			executeNx(command);
+		}
+
+		// Compute point cloud if needed.
+		if (dump.point_cloud) {
+			NxLibCommand command(cmdComputePointMap);
+			setNx(command.parameters()[itmCameras], ensenso_.serialNumber());
+			executeNx(command);
 		}
 
 		// Also get rectified overlay image.
@@ -111,8 +125,27 @@ public:
 protected:
 	/// Dump all data
 	void dumpData() {
-		dumpCameraImages(camera_, output_directory + "/", "", default_time_format, dump.stereo_raw, dump.stereo_rectified, dump.disparity, dump.point_cloud);
-		if (overlay_) dumpCameraImages(*overlay_, output_directory + "/", "", default_time_format, dump.overlay_raw, dump.overlay_rectified, false, false);
+		dumpCameraImages(
+			camera_,
+			output_directory + "/",
+			"",
+			default_time_format,
+			dump.stereo_raw,
+			dump.stereo_rectified,
+			dump.disparity,
+			dump.point_cloud
+		);
+
+		if (overlay_) dumpCameraImages(
+			*overlay_,
+			output_directory + "/",
+			"",
+			default_time_format,
+			dump.overlay_raw,
+			dump.overlay_rectified,
+			false,
+			false
+		);
 	}
 };
 
