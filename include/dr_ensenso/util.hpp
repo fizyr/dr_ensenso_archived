@@ -63,17 +63,6 @@ boost::optional<NxLibItem> openCameraByType(std::string const & type);
  */
 void executeNx(NxLibCommand const & command, std::string const & what = "");
 
-/// Set the value of an NxLibItem.
-/**
- * \throw NxError on failure.
- */
-template<typename T>
-void setNx(NxLibItem const & item, T && value, std::string const & what = "") {
-	int error = 0;
-	item.set(&error, std::forward<T>(value));
-	if (error) throw NxError(item, error, what);
-}
-
 /// Get the value of an NxLibItem as the specified type.
 /**
  * \throw NxError on failure.
@@ -85,5 +74,28 @@ T getNx(NxLibItem const & item, std::string const & what = "") {
 	if (error) throw NxError(item, error, what);
 	return result;
 }
+
+/// Set the value of an NxLibItem.
+/**
+ * \throw NxError on failure.
+ */
+template<typename T>
+void setNx(NxLibItem const & item, T && value, std::string const & what = "") {
+	int error = 0;
+	item.set(&error, std::forward<T>(value));
+	if (error) throw NxError(item, error, what);
+}
+
+/// Set the value of an NxLibItem.
+/**
+ * \throw NxError on failure.
+ */
+void setNxJson(NxLibItem const & item, std::string const & json, std::string const & what = "");
+
+/// Set the value of an NxLibItem.
+/**
+ * \throw NxError on failure.
+ */
+void setNxJsonFile(NxLibItem const & item, std::string const & filename, std::string const & what = "");
 
 }

@@ -1,5 +1,8 @@
 #include "util.hpp"
 
+#include <fstream>
+#include <sstream>
+
 namespace dr {
 
 boost::optional<NxLibItem> findCameraBySerial(std::string const & serial) {
@@ -63,6 +66,22 @@ void executeNx(NxLibCommand const & command, std::string const & what) {
 	int error = 0;
 	command.execute(&error);
 	if (error) throwCommandError(error, what);
+}
+
+void setNxJson(NxLibItem const & item, std::string const & json, std::string const & what) {
+	int error = 0;
+	item.setJson(&error, json, true);
+	if (error) throw NxError(item, error, what);
+}
+
+void setNxJsonFile(NxLibItem const & item, std::string const & filename, std::string const & what) {
+	std::ifstream file;
+	file.exceptions(std::ios::failbit | std::ios::badbit);
+	file.open(filename, std::ios::in);
+
+	std::stringstream buffer;
+	buffer << file.rdbuf();
+	return setNxJson(item, buffer.str(), what);
 }
 
 }
