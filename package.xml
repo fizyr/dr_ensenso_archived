@@ -16,6 +16,7 @@
 	<depend>dr_util</depend>
 	<depend>dr_camera</depend>
 	<depend>dr_opencv</depend>
+	<depend>dr_pcl</depend>
 	<depend>pcl_conversions</depend>
 	<depend>pcl_ros</depend>
 

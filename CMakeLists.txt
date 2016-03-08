@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
 	dr_camera
 	dr_eigen
 	dr_opencv
+	dr_pcl
 	pcl_ros
 	pcl_conversions
 )
