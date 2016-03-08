@@ -127,10 +127,22 @@ void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi,
 	// Optionally capture new data.
 	if (capture) this->retrieve();
 
-	// Compute the disparity and point map.
 	setRegionOfInterest(roi);
-	executeNx(NxLibCommand(cmdComputeDisparityMap));
-	executeNx(NxLibCommand(cmdComputePointMap));
+	std::string serial = getSerialNumber();
+
+	// Compute disparity.
+	{
+		NxLibCommand command(cmdComputeDisparityMap);
+		setNx(command.parameters()[itmCameras], serial);
+		executeNx(command);
+	}
+
+	// Compute point cloud.
+	{
+		NxLibCommand command(cmdComputePointMap);
+		setNx(command.parameters()[itmCameras], serial);
+		executeNx(command);
+	}
 
 	// Convert the binary data to a point cloud.
 	cloud = toPointCloud(ensenso_camera[itmImages][itmPointMap]);
