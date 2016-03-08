@@ -66,9 +66,7 @@ public:
 
 	void run() {
 		stop_ = false;
-		std::cerr << "Starting camera capture.\n";
 		while (!stop_) step();
-		std::cerr << "Stopping camera capture.\n";
 	}
 
 	void stop() {
@@ -108,7 +106,7 @@ protected:
 
 		dumpImage(camera_[itmImages][itmDisparityMap], "disparity", timestamp);
 		dumpStereoImages(camera_[itmImages][itmRaw], "stereo_raw", timestamp);
-		dumpStereoImages(camera_[itmImages][itmRectified], "stereo_recitified", timestamp);
+		dumpStereoImages(camera_[itmImages][itmRectified], "stereo_rectified", timestamp);
 
 		if (overlay_) {
 			dumpImage((*overlay_)[itmImages][itmRaw],       "overlay_raw",       timestamp);
@@ -129,13 +127,14 @@ namespace {
 
 int main() {
 	// Create and configure Ensenso
-	std::cerr << "Inilizing camera. This may take some time.\n";
+	std::cerr << "Initializing camera. This may take some time.\n";
 
 	dr::EnsensoDumpTool dump_tool(false);
 	::dump_tool = &dump_tool;
 	std::signal(SIGINT, signal_handler);
 
 	std::cerr << "Camera initialized.\n";
+	std::cerr << "Starting camera capture.\n";
 	dump_tool.run();
-	std::cerr << "Camera closed.\n";
+	std::cerr << "Stopped image capture.\n";
 }
