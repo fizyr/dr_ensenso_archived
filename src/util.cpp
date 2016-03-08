@@ -30,48 +30,33 @@ boost::optional<NxLibItem> findCameraByType(std::string const & type) {
 	return {};
 }
 
+namespace {
+	/// Open an optional camera, or return nothing.
+	boost::optional<NxLibItem> openCamera(boost::optional<NxLibItem> camera) {
+		if (!camera) return {};
+
+		NxLibCommand command(cmdOpen);
+		setNx(command.parameters()[itmCameras], getNx<std::string>((*camera)[itmSerialNumber]));
+		executeNx(command);
+
+		return camera;
+	}
+}
+
 boost::optional<NxLibItem> openCameraBySerial(std::string const & serial) {
-	auto camera = findCameraBySerial(serial);
-	if (!camera) return {};
-
-	NxLibCommand command(cmdOpen);
-	setNx(command.parameters()[itmCameras], serial);
-	executeNx(command);
-
-	return camera;
+	return openCamera(findCameraBySerial(serial));
 }
 
 boost::optional<NxLibItem> openCameraByEepromId(int eeprom_id) {
-	auto camera = findCameraByEepromId(eeprom_id);
-	if (!camera) return {};
-
-	NxLibCommand command(cmdOpen);
-	setNx(command.parameters()[itmCameras], getNx<std::string>((*camera)[itmSerialNumber]));
-	executeNx(command);
-
-	return camera;
+	return openCamera(findCameraByEepromId(eeprom_id));
 }
 
 boost::optional<NxLibItem> openCameraByLink(std::string const & serial) {
-	auto camera = findCameraByLink(serial);
-	if (!camera) return {};
-
-	NxLibCommand command(cmdOpen);
-	setNx(command.parameters()[itmCameras], serial);
-	executeNx(command);
-
-	return camera;
+	return openCamera(findCameraByLink(serial));
 }
 
 boost::optional<NxLibItem> openCameraByType(std::string const & type) {
-	auto camera = findCameraByType(type);
-	if (!camera) return {};
-
-	NxLibCommand command(cmdOpen);
-	setNx(command.parameters()[itmCameras], getNx<std::string>((*camera)[itmSerialNumber]));
-	executeNx(command);
-
-	return camera;
+	return openCamera(findCameraByType(type));
 }
 
 void executeNx(NxLibCommand const & command, std::string const & what) {
