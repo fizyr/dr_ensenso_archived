@@ -33,6 +33,7 @@ dr_include_directories(
 add_library(${PROJECT_NAME}
 	src/ensenso.cpp
 	src/util.cpp
+	src/error.cpp
 	src/eigen.cpp
 	src/opencv.cpp
 	src/pcl.cpp
