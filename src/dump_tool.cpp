@@ -48,8 +48,9 @@ public:
 		ensenso_.trigger();
 		try {
 			if (!ensenso_.retrieve(false)) return;
-		} catch (NxError const & e) {
-			if (e.getErrorCode() == NxLibExecutionFailed && getNx<std::string>(NxLibItem{}[itmExecute][itmResult][itmErrorSymbol]) == errCaptureTimeout) return;
+		} catch (NxCommandError const & e) {
+			// Ignore timeouts, throw the rest of the errors.
+			if (e.error_symbol() == errCaptureTimeout) return;
 			throw;
 		}
 
