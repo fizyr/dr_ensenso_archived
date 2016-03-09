@@ -90,16 +90,28 @@ void setNx(NxLibItem const & item, T && value, std::string const & what = "") {
 	if (error) throw NxError(item, error, what);
 }
 
-/// Set the value of an NxLibItem.
+/// Set the value of an NxLibItem to a JSON tree.
 /**
  * \throw NxError on failure.
  */
 void setNxJson(NxLibItem const & item, std::string const & json, std::string const & what = "");
 
-/// Set the value of an NxLibItem.
+/// Set the value of an NxLibItem to a JSON tree from a file.
 /**
  * \throw NxError on failure.
  */
-void setNxJsonFile(NxLibItem const & item, std::string const & filename, std::string const & what = "");
+void setNxJsonFromFile(NxLibItem const & item, std::string const & filename, std::string const & what = "");
+
+/// Get the value of an NxLibItem as a JSON tree.
+/**
+ * \throw NxError on failure.
+ */
+std::string getNxJson(NxLibItem const & item, std::string const & what = "");
+
+/// Get the value of an NxLibItem as JSON tree and write it to a file.
+/**
+ * \throw NxError on failure.
+ */
+void writeNxJsonToFile(NxLibItem const & item, std::string const & filename, std::string const & what = "");
 
 }

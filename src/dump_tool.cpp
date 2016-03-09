@@ -59,14 +59,15 @@ public:
 	}
 
 	/// Load camera parameters for the main stereo camera.
-	void loadCameraParameters(std::string const & filename) {
-		setNxJsonFile(camera_[itmParameters], filename);
+	void loadMainParameters(std::string const & filename) {
+		std::cerr << "Loading camera parameters from " << filename << "\n";
+		ensenso_.loadParameters(filename);
 	}
 
 	/// Load camera parameters for the linked overlay camera.
 	void loadOverlayParameters(std::string const & filename) {
-		if (!overlay_) throw std::runtime_error("No overlay camera linked. Can not set parameters.");
-		setNxJsonFile(overlay_.get()[itmParameters], filename);
+		std::cerr << "Loading overlay camera parameters from " << filename << "\n";
+		ensenso_.loadOverlayParameters(filename);
 	}
 
 	/// Set the connected cameras hardware or software triggered.
@@ -168,9 +169,9 @@ int main(int argc, char * * argv) {
 	::dump_tool = &dump_tool;
 	std::signal(SIGINT, signal_handler);
 
-	dump_tool.hardwareTriggered(true);
-	if (argc > 1) dump_tool.loadCameraParameters(argv[1]);
+	if (argc > 1) dump_tool.loadMainParameters(argv[1]);
 	if (argc > 2) dump_tool.loadOverlayParameters(argv[2]);
+	dump_tool.hardwareTriggered(true);
 
 	std::cerr << "Camera initialized.\n";
 	std::cerr << "Starting camera capture.\n";

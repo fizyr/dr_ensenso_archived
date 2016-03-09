@@ -82,14 +82,28 @@ void setNxJson(NxLibItem const & item, std::string const & json, std::string con
 	if (error) throw NxError(item, error, what);
 }
 
-void setNxJsonFile(NxLibItem const & item, std::string const & filename, std::string const & what) {
+void setNxJsonFromFile(NxLibItem const & item, std::string const & filename, std::string const & what) {
 	std::ifstream file;
 	file.exceptions(std::ios::failbit | std::ios::badbit);
-	file.open(filename, std::ios::in);
+	file.open(filename);
 
 	std::stringstream buffer;
 	buffer << file.rdbuf();
 	return setNxJson(item, buffer.str(), what);
+}
+
+std::string getNxJson(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	std::string result = item.asJson(&error, true);
+	if (error) throw NxError(item, error, what);
+	return result;
+}
+
+void writeNxJsonToFile(NxLibItem const & item, std::string const & filename, std::string const & what) {
+	std::ofstream file;
+	file.exceptions(std::ios::failbit | std::ios::badbit);
+	file.open(filename);
+	file << getNxJson(item, what);
 }
 
 }
