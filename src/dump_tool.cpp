@@ -4,6 +4,8 @@
 
 #include <dr_pcl/pointcloud_tools.hpp>
 #include <dr_log/dr_log.hpp>
+#include <dr_util/timestamp.hpp>
+#include <dr_util/file_system.hpp>
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -52,6 +54,8 @@ public:
 	EnsensoDumpTool() {
 		camera_  = ensenso_.native();
 		overlay_ = ensenso_.nativeOverlay();
+
+		output_directory = getTimeString();
 	}
 
 	/// Destructor.
@@ -137,9 +141,12 @@ public:
 protected:
 	/// Dump all data
 	void dumpData() {
+		std::string sample_directory = output_directory + "/" + getTimeString();
+		createDirectory(sample_directory);
+
 		dumpCameraImages(
 			camera_,
-			output_directory + "./",
+			sample_directory + "/",
 			"",
 			default_time_format,
 			dump.stereo_raw,
@@ -150,7 +157,7 @@ protected:
 
 		if (overlay_) dumpCameraImages(
 			*overlay_,
-			output_directory + "./",
+			sample_directory + "/",
 			"",
 			default_time_format,
 			dump.overlay_raw,
