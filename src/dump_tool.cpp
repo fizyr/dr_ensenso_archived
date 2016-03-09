@@ -132,6 +132,7 @@ public:
 			executeNx(command);
 		}
 
+		std::cerr << "Data retrieved.\n";
 		dumpData();
 	}
 
@@ -187,12 +188,14 @@ namespace {
 }
 
 int main(int argc, char * * argv) {
+	std::cerr << "Usage: " << argv[0] << " <optional path to camera parameters> <optional path to overlay camera parameters>" << std::endl;
 	// Create and configure Ensenso
 	std::cerr << "Initializing camera. This may take some time.\n";
 
 	dr::EnsensoDumpTool dump_tool;
 	::dump_tool = &dump_tool;
 	std::signal(SIGINT, signal_handler);
+	std::cerr << "Camera initialized. Setting parameters.\n";
 
 	if (argc > 1) dump_tool.timeout = std::atoi(argv[1]);
 	if (argc > 2) dump_tool.loadMainParameters(argv[2]);
@@ -200,8 +203,8 @@ int main(int argc, char * * argv) {
 	dump_tool.hardwareTriggered(true);
 	dump_tool.dumpParameters();
 
-	std::cerr << "Camera initialized.\n";
 	std::cerr << "Starting camera capture.\n";
 	dump_tool.run();
 	std::cerr << "Stopped image capture.\n";
+	std::signal(SIGINT, SIG_DFL);
 }
