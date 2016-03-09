@@ -128,7 +128,7 @@ protected:
 	void dumpData() {
 		dumpCameraImages(
 			camera_,
-			output_directory + "/",
+			output_directory + "./",
 			"",
 			default_time_format,
 			dump.stereo_raw,
@@ -139,7 +139,7 @@ protected:
 
 		if (overlay_) dumpCameraImages(
 			*overlay_,
-			output_directory + "/",
+			output_directory + "./",
 			"",
 			default_time_format,
 			dump.overlay_raw,
