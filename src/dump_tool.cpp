@@ -169,8 +169,8 @@ int main(int argc, char * * argv) {
 	std::signal(SIGINT, signal_handler);
 
 	dump_tool.hardwareTriggered(true);
-	if (argc > 0) dump_tool.loadCameraParameters(argv[0]);
-	if (argc > 1) dump_tool.loadOverlayParameters(argv[1]);
+	if (argc > 1) dump_tool.loadCameraParameters(argv[1]);
+	if (argc > 2) dump_tool.loadOverlayParameters(argv[2]);
 
 	std::cerr << "Camera initialized.\n";
 	std::cerr << "Starting camera capture.\n";
