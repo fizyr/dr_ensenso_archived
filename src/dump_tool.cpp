@@ -29,10 +29,13 @@ class EnsensoDumpTool {
 	/// Flag to asynchronously stop the dump tool if it is running.
 	volatile bool stop_;
 
+public:
+	/// The capture timeout in milliseconds.
+	int timeout = 1500;
+
 	/// The directory to save the output files to.
 	std::string output_directory;
 
-public:
 	struct {
 		bool stereo_raw        = true;
 		bool stereo_rectified  = true;
@@ -78,16 +81,25 @@ public:
 		}
 	}
 
-	/// Do a single trigger, retrieve, process, dump step.
-	void step() {
+
+	bool recordData() {
 		ensenso_.trigger();
 		try {
-			if (!ensenso_.retrieve(false)) return;
+			if (!ensenso_.retrieve(false, timeout)) return false;
 		} catch (NxCommandError const & e) {
 			// Ignore timeouts, throw the rest of the errors.
-			if (e.error_symbol() == errCaptureTimeout) return;
+			if (e.error_symbol() == errCaptureTimeout) {
+				return false;
+			}
 			throw;
 		}
+
+		return true;
+	}
+
+	/// Do a single trigger, retrieve, process, dump step.
+	void step() {
+		if (!recordData()) return;
 
 		// Compute disparity if needed.
 		if (dump.disparity || dump.point_cloud) {
@@ -169,8 +181,9 @@ int main(int argc, char * * argv) {
 	::dump_tool = &dump_tool;
 	std::signal(SIGINT, signal_handler);
 
-	if (argc > 1) dump_tool.loadMainParameters(argv[1]);
-	if (argc > 2) dump_tool.loadOverlayParameters(argv[2]);
+	if (argc > 1) dump_tool.timeout = std::atoi(argv[1]);
+	if (argc > 2) dump_tool.loadMainParameters(argv[2]);
+	if (argc > 3) dump_tool.loadOverlayParameters(argv[3]);
 	dump_tool.hardwareTriggered(true);
 
 	std::cerr << "Camera initialized.\n";
