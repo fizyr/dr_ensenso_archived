@@ -79,7 +79,7 @@ public:
 	void hardwareTriggered(bool enabled) {
 		setNx(camera_[itmParameters][itmCapture][itmTriggerMode], enabled ? valFallingEdge : valSoftware);
 		if (overlay_) {
-			setNx((*overlay_)[itmParameters][itmCapture][itmTriggerMode], enabled ? valFallingEdge : valSoftware);
+			setNx((*overlay_)[itmParameters][itmCapture][itmTriggerMode], enabled ? valRisingEdge : valSoftware);
 		}
 	}
 
