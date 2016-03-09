@@ -9,29 +9,36 @@
 #include <boost/date_time/time_facet.hpp>
 
 #include <sstream>
+#include <iostream>
 
 namespace dr {
 
 namespace {
-	std::string formatTime(std::int64_t timestamp, std::string const & format) {
+	std::string formatTime(boost::posix_time::ptime timestamp, std::string const & format) {
 		std::stringstream buffer;
 		buffer.imbue(std::locale(buffer.getloc(), new boost::posix_time::time_facet(format.c_str())));
-		buffer << boost::posix_time::ptime(boost::gregorian::date(1970, 1, 1), boost::posix_time::microseconds(timestamp));
+		buffer << timestamp;
 		return buffer.str();
+	}
+
+	std::string formatTime(std::int64_t timestamp, std::string const & format) {
+		return formatTime(boost::posix_time::ptime(boost::gregorian::date(1970, 1, 1), boost::posix_time::microseconds(timestamp)), format);
 	}
 }
 
 void dumpCloud(NxLibItem const & item, std::string const & path_prefix, std::string const & path_suffix, std::string const & time_format) {
 	pcl::PointCloud<pcl::PointXYZ> cloud = toPointCloud(item);
-	saveCloud(path_prefix + formatTime(cloud.header.stamp, time_format) + path_suffix + ".pcd", cloud);
+	std::string filename = path_prefix + formatTime(cloud.header.stamp, time_format) + path_suffix + ".pcd";
+	saveCloud(filename, cloud);
 }
 
 void dumpImage(NxLibItem const & item, std::string const & path_prefix, std::string const & path_suffix, std::string const & time_format) {
 	std::int64_t timestamp = getNxBinaryTimestamp(item);
+	std::string filename = path_prefix + formatTime(timestamp, time_format) + path_suffix + ".png";
 
 	NxLibCommand command(cmdSaveImage);
 	setNx(command.parameters()[itmNode], item.path);
-	setNx(command.parameters()[itmFilename], path_prefix + formatTime(timestamp, time_format) + path_suffix + ".png");
+	setNx(command.parameters()[itmFilename], filename);
 	executeNx(command);
 }
 
@@ -74,6 +81,16 @@ void dumpCameraImages(
 	} else {
 		throw std::runtime_error("Unknown camera type: " + type + ". Can not dump camera images.");
 	}
+}
+
+void dumpParameters(
+	NxLibItem const & item,
+	std::string const & path_prefix,
+	std::string const & path_suffix,
+	std::string const & time_format
+) {
+	std::string filename = path_prefix + formatTime(boost::posix_time::microsec_clock::universal_time(), time_format) + path_suffix + ".json";
+	writeNxJsonToFile(item, filename);
 }
 
 }

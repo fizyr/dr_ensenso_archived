@@ -42,4 +42,12 @@ namespace dr {
 		bool point_cloud = true                                ///< If true, dump the point cloud (only for stereo cameras).
 	);
 
+	/// Dump the parameters of a camera.
+	void dumpParameters(
+		NxLibItem const & item,                                ///< An NxLibItem representing the camera parameters.
+		std::string const & path_prefix,                       ///< A string to prepend before the timestamp to form the filename.
+		std::string const & path_suffix,                       ///< A string to append after the timestamp to form the filename.
+		std::string const & time_format = default_time_format  ///< A Boost DateTime compatible format string for time formatting.
+	);
+
 }
