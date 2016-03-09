@@ -83,6 +83,14 @@ public:
 		}
 	}
 
+	/// Dump parameters.
+	void dumpParameters() {
+		createDirectory(output_directory);
+		dr::dumpParameters(camera_[itmParameters], output_directory + "/", "_" + ensenso_.serialNumber() + "_parameters");
+		if (overlay_) {
+			dr::dumpParameters(overlay_.get()[itmParameters], output_directory + "/", "_" + ensenso_.overlaySerialNumber() + "_parameters");
+		}
+	}
 
 	bool recordData() {
 		ensenso_.trigger();
@@ -190,6 +198,7 @@ int main(int argc, char * * argv) {
 	if (argc > 2) dump_tool.loadMainParameters(argv[2]);
 	if (argc > 3) dump_tool.loadOverlayParameters(argv[3]);
 	dump_tool.hardwareTriggered(true);
+	dump_tool.dumpParameters();
 
 	std::cerr << "Camera initialized.\n";
 	std::cerr << "Starting camera capture.\n";
