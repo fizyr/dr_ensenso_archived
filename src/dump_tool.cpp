@@ -43,8 +43,6 @@ public:
 		bool point_cloud       = true;
 		bool overlay_raw       = true;
 		bool overlay_rectified = true;
-		bool calibration       = true;
-		bool parameters        = true;
 	} dump;
 
 	/// Check the camera wrapper.
