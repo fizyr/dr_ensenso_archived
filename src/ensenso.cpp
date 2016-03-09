@@ -17,7 +17,7 @@ Ensenso::Ensenso(bool connect_overlay) {
 
 	// Try to find a stereo camera.
 	boost::optional<NxLibItem> camera = openCameraByType(valStereo);
-	if (!camera) throw std::runtime_error("Please connect a single stereo camera to your computer.");
+	if (!camera) throw std::runtime_error("Please connect an Ensenso stereo camera to your computer.");
 	ensenso_camera = *camera;
 
 	// Get the linked overlay camera.
