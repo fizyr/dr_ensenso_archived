@@ -11,6 +11,7 @@
 
 #include <sstream>
 #include <csignal>
+#include <string>
 
 namespace dr {
 
@@ -159,7 +160,7 @@ namespace {
 	}
 }
 
-int main() {
+int main(int argc, char * * argv) {
 	// Create and configure Ensenso
 	std::cerr << "Initializing camera. This may take some time.\n";
 
@@ -168,6 +169,8 @@ int main() {
 	std::signal(SIGINT, signal_handler);
 
 	dump_tool.hardwareTriggered(true);
+	if (argc > 0) dump_tool.loadCameraParameters(argv[0]);
+	if (argc > 1) dump_tool.loadOverlayParameters(argv[1]);
 
 	std::cerr << "Camera initialized.\n";
 	std::cerr << "Starting camera capture.\n";
