@@ -1,6 +1,7 @@
 #include "dump.hpp"
-#include "util.hpp"
+#include "opencv.hpp"
 #include "pcl.hpp"
+#include "util.hpp"
 
 #include <dr_pcl/pointcloud_tools.hpp>
 
@@ -35,11 +36,8 @@ void dumpCloud(NxLibItem const & item, std::string const & path_prefix, std::str
 void dumpImage(NxLibItem const & item, std::string const & path_prefix, std::string const & path_suffix, std::string const & time_format) {
 	std::int64_t timestamp = getNxBinaryTimestamp(item);
 	std::string filename = path_prefix + formatTime(timestamp, time_format) + path_suffix + ".png";
-
-	NxLibCommand command(cmdSaveImage);
-	setNx(command.parameters()[itmNode], item.path);
-	setNx(command.parameters()[itmFilename], filename);
-	executeNx(command);
+	cv::Mat image = toCvMat(item);
+	cv::imwrite(filename, image);
 }
 
 void dumpStereoImages(NxLibItem const & item, std::string const & path_prefix, std::string const & path_suffix, std::string const & time_format) {
