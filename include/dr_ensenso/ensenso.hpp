@@ -71,7 +71,7 @@ public:
 	bool retrieve(bool trigger = true, unsigned int timeout = 1500, bool stereo = true, bool overlay=true) const;
 
 	/// Returns the pose of the camera with respect to the calibration plate.
-	void calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
+	bool calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
 
 	/// Returns the size of the intensity images.
 	cv::Size getIntensitySize() override;

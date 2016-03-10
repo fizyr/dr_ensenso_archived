@@ -65,7 +65,7 @@ bool Ensenso::retrieve(bool trigger, unsigned int timeout, bool stereo, bool ove
 	return true;
 }
 
-void Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const {
+bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const {
 	executeNx(NxLibCommand(cmdDiscardPatterns));
 
 	for (int i = 0; i < num_patterns; ++i) {
@@ -92,6 +92,7 @@ void Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const 
 	executeNx(command_estimate_pose);
 	pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
 	pose.translation() *= 0.001;
+	return true;
 }
 
 cv::Size Ensenso::getIntensitySize() {
