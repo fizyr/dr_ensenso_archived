@@ -4,7 +4,7 @@
 #include "util.hpp"
 
 #include <pcl/io/vtk_lib_io.h>
-#include <opencv2/highgui.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
