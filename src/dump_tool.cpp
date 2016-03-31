@@ -2,14 +2,12 @@
 #include "util.hpp"
 #include "dump.hpp"
 
-#include <dr_pcl/pointcloud_tools.hpp>
-#include <dr_log/dr_log.hpp>
 #include <dr_util/timestamp.hpp>
-#include <dr_util/file_system.hpp>
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/time_facet.hpp>
+#include <boost/filesystem/operations.hpp>
 
 #include <sstream>
 #include <csignal>
@@ -85,7 +83,7 @@ public:
 
 	/// Dump parameters.
 	void dumpParameters() {
-		createDirectory(output_directory);
+		boost::filesystem::create_directories({output_directory});
 		dr::dumpParameters(camera_[itmParameters],  output_directory + "/", "_" + ensenso_.serialNumber() + "_parameters");
 		dr::dumpParameters(camera_[itmCalibration], output_directory + "/", "_" + ensenso_.serialNumber() + "_calibration");
 		dr::dumpParameters(camera_[itmLink],        output_directory + "/", "_" + ensenso_.serialNumber() + "_link");
@@ -155,7 +153,7 @@ protected:
 	/// Dump all data
 	void dumpData() {
 		std::string sample_directory = output_directory + "/" + getTimeString();
-		createDirectory(sample_directory);
+		boost::filesystem::create_directories({sample_directory});
 
 		dumpCameraImages(
 			camera_,

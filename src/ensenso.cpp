@@ -4,9 +4,6 @@
 #include "opencv.hpp"
 #include "pcl.hpp"
 
-#include <dr_log/dr_log.hpp>
-#include <dr_util/util.hpp>
-
 #include <stdexcept>
 
 namespace dr {

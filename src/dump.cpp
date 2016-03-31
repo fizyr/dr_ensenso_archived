@@ -3,11 +3,15 @@
 #include "pcl.hpp"
 #include "util.hpp"
 
-#include <dr_pcl/pointcloud_tools.hpp>
+#include <pcl/io/vtk_lib_io.h>
+#include <opencv2/highgui.hpp>
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/time_facet.hpp>
+
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
 
 #include <sstream>
 #include <iostream>
@@ -30,7 +34,8 @@ namespace {
 void dumpCloud(NxLibItem const & item, std::string const & path_prefix, std::string const & path_suffix, std::string const & time_format) {
 	pcl::PointCloud<pcl::PointXYZ> cloud = toPointCloud(item);
 	std::string filename = path_prefix + formatTime(cloud.header.stamp, time_format) + path_suffix + ".pcd";
-	saveCloud(filename, cloud);
+	boost::filesystem::create_directories(boost::filesystem::path(filename).parent_path());
+	pcl::io::savePCDFileASCII(filename, cloud);
 }
 
 void dumpImage(NxLibItem const & item, std::string const & path_prefix, std::string const & path_suffix, std::string const & time_format) {
