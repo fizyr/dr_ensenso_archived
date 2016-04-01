@@ -1,17 +1,19 @@
 #pragma once
 #include "util.hpp"
 
-#include <dr_camera/intensity_camera.hpp>
-#include <dr_camera/depth_camera.hpp>
-#include <dr_camera/point_cloud_camera.hpp>
-#include <dr_camera_parameters/intrinsic_parameters.hpp>
+#include <Eigen/Eigen>
+
+#include <opencv2/opencv.hpp>
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include <ensenso/nxLib.h>
 #include <boost/optional.hpp>
 
 namespace dr {
 
-class Ensenso : public IntensityCamera, public PointCloudCamera {
+class Ensenso {
 protected:
 	/// The root EnsensoSDK node.
 	NxLibItem root;
@@ -74,10 +76,10 @@ public:
 	bool calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
 
 	/// Returns the size of the intensity images.
-	cv::Size getIntensitySize() override;
+	cv::Size getIntensitySize();
 
 	/// Returns the size of the depth images.
-	cv::Size getPointCloudSize() override;
+	cv::Size getPointCloudSize();
 
 	/// Loads the intensity image to intensity.
 	/**
@@ -86,7 +88,7 @@ public:
 	void loadIntensity(cv::Mat & intensity, bool capture);
 
 	/// Loads the intensity image to intensity.
-	void loadIntensity(cv::Mat & intensity) override {
+	void loadIntensity(cv::Mat & intensity) {
 		loadIntensity(intensity, true);
 	}
 
@@ -96,19 +98,16 @@ public:
 	 * \param roi The region of interest.
 	 * \param capture If true, capture a new image before loading the point cloud.
 	 */
-	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture);
+	void loadPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi, bool capture);
 
 	/// Loads the pointcloud from depth in the region of interest.
 	/**
 	 * \param cloud the resulting pointcloud.
 	 * \param roi The region of interest.
 	 */
-	void loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect()) override {
+	void loadPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi = cv::Rect()) {
 		return loadPointCloud(cloud, roi, true);
 	}
-
-	// Don't hide the base class verion of getPointCloud.
-	using PointCloudCamera::getPointCloud;
 
 	/// Get a pointlcoud from the camera.
 	/**

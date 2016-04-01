@@ -121,7 +121,7 @@ void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
 	}
 }
 
-void Ensenso::loadPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture) {
+void Ensenso::loadPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi, bool capture) {
 	// Optionally capture new data.
 	if (capture) this->retrieve();
 
