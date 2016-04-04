@@ -35,6 +35,13 @@ void Ensenso::loadOverlayParameters(std::string const parameters_file) {
 	setNxJsonFromFile(overlay_camera.get()[itmParameters], parameters_file);
 }
 
+void Ensenso::loadOverlayParameterSet(std::string const parameters_file) {
+	if (!overlay_camera) throw std::runtime_error("No overlay camera found. Can not load overlay parameter set.");
+	NxLibCommand command(cmdLoadUEyeParameterSet);
+	setNx(command.parameters()[itmFilename], parameters_file);
+	executeNx(command);
+}
+
 bool Ensenso::trigger(bool stereo, bool overlay) const {
 	overlay = overlay && overlay_camera;
 
