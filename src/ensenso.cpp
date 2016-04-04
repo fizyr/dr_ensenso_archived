@@ -115,9 +115,9 @@ void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
 
 	// Copy to cv::Mat.
 	if (overlay_camera) {
-		cv::cvtColor(toCvMat(overlay_camera.get()[itmImages][itmRaw]), intensity, cv::COLOR_RGB2BGR);
+		intensity = toCvMat(overlay_camera.get()[itmImages][itmRaw]);
 	} else {
-		cv::cvtColor(toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]), intensity, cv::COLOR_GRAY2BGR);
+		intensity = toCvMat(ensenso_camera[itmImages][itmRaw][itmLeft]);
 	}
 }
 
