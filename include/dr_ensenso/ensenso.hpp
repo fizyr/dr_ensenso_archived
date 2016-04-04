@@ -55,6 +55,9 @@ public:
 	/// Loads the overlay camera parameters from a JSON file.
 	void loadOverlayParameters(std::string const parameters_file);
 
+	/// Loads the overlay camera uEye parameters from a INI file.
+	void loadOverlayParameterSet(std::string const parameters_file);
+
 	/// Trigger data acquisition on the camera.
 	/**
 	 * \param stereo If true, capture data from the stereo camera.
