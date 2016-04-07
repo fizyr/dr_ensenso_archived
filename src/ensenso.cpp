@@ -179,11 +179,13 @@ void Ensenso::loadRegisteredPointCloud(PointCloudCamera::PointCloud & cloud, cv:
 		NxLibCommand command(cmdRenderPointMap);
 		setNx(command.parameters()[itmNear], 1); // distance in millimeters to the camera (clip nothing?)
 		setNx(command.parameters()[itmCamera], overlaySerialNumber());
+		// gives weird (RenderPointMap) results with OpenGL enabled, so disable
+		setNx(root[itmParameters][itmRenderPointMap][itmUseOpenGL], false);
 		executeNx(command);
 	}
 
 	// Convert the binary data to a point cloud.
-	cloud = toPointCloud(ensenso_camera[itmImages][itmPointMap]);
+	cloud = toPointCloud(root[itmImages][itmRenderPointMap]);
 }
 
 void Ensenso::setRegionOfInterest(cv::Rect const & roi) {
