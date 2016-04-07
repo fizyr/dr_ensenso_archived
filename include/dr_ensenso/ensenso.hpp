@@ -112,6 +112,9 @@ public:
 		return loadPointCloud(cloud, roi, true);
 	}
 
+	// Don't hide the base class verion of getPointCloud.
+	using PointCloudCamera::getPointCloud;
+
 	/// Get a pointlcoud from the camera.
 	/**
 	 * \param roi The region of interest.

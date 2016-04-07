@@ -153,6 +153,39 @@ void Ensenso::loadPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect ro
 	cloud = toPointCloud(ensenso_camera[itmImages][itmPointMap]);
 }
 
+void Ensenso::loadRegisteredPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture) {
+	// Optionally capture new data.
+	if (capture) this->retrieve();
+
+	setRegionOfInterest(roi);
+	std::string serial = serialNumber();
+
+	// Compute disparity.
+	{
+		NxLibCommand command(cmdComputeDisparityMap);
+		setNx(command.parameters()[itmCameras], serial);
+		executeNx(command);
+	}
+
+	// Compute point cloud.
+	{
+		NxLibCommand command(cmdComputePointMap);
+		setNx(command.parameters()[itmCameras], serial);
+		executeNx(command);
+	}
+
+	// Render point cloud.
+	{
+		NxLibCommand command(cmdRenderPointMap);
+		setNx(command.parameters()[itmNear], 1); // distance in millimeters to the camera (clip nothing?)
+		setNx(command.parameters()[itmCamera], overlaySerialNumber());
+		executeNx(command);
+	}
+
+	// Convert the binary data to a point cloud.
+	cloud = toPointCloud(ensenso_camera[itmImages][itmPointMap]);
+}
+
 void Ensenso::setRegionOfInterest(cv::Rect const & roi) {
 	if (roi.area() == 0) {
 		setNx(ensenso_camera[itmParameters][itmCapture][itmUseDisparityMapAreaOfInterest], false);
