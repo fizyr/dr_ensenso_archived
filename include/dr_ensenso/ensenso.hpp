@@ -119,7 +119,7 @@ public:
 	 * \param roi The region of interest.
 	 * \param capture If true, capture a new image before loading the point cloud.
 	 */
-	void loadRegisteredPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture = true);
+	void loadRegisteredPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi = cv::Rect(), bool capture = true);
 
 	/// Get a pointlcoud from the camera.
 	/**
