@@ -113,6 +113,14 @@ public:
 	// Don't hide the base class verion of getPointCloud.
 	using PointCloudCamera::getPointCloud;
 
+	/// Loads the pointcloud registered to the overlay camera.
+	/**
+	 * \param cloud the resulting pointcloud.
+	 * \param roi The region of interest.
+	 * \param capture If true, capture a new image before loading the point cloud.
+	 */
+	void loadRegisteredPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture = true);
+
 	/// Get a pointlcoud from the camera.
 	/**
 	 * \param roi The region of interest.
