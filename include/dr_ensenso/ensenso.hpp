@@ -123,6 +123,14 @@ public:
 		return result;
 	}
 
+	/// Loads the pointcloud registered to the overlay camera.
+	/**
+	 * \param cloud the resulting pointcloud.
+	 * \param roi The region of interest.
+	 * \param capture If true, capture a new image before loading the point cloud.
+	 */
+	void loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi, bool capture = true);
+
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
 	void setRegionOfInterest(cv::Rect const & roi);
