@@ -153,7 +153,7 @@ void Ensenso::loadPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect ro
 	cloud = toPointCloud(ensenso_camera[itmImages][itmPointMap]);
 }
 
-void Ensenso::loadRegisteredPointCloud(PointCloudCamera::PointCloud & cloud, cv::Rect roi, bool capture) {
+void Ensenso::loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi, bool capture) {
 	// Optionally capture new data.
 	if (capture) this->retrieve();
 
