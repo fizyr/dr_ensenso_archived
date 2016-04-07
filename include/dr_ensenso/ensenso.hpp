@@ -129,7 +129,7 @@ public:
 	 * \param roi The region of interest.
 	 * \param capture If true, capture a new image before loading the point cloud.
 	 */
-	void loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi, bool capture = true);
+	void loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi = cv::Rect(), bool capture = true);
 
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
