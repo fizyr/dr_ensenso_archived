@@ -78,8 +78,6 @@ bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const 
 		setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], true);
 
 		retrieve(true, 1500, true, false);
-		NxLibCommand command_capture(cmdCapture);
-		executeNx(command_capture);
 
 		setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], false);
 		setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], true);
