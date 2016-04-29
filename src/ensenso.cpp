@@ -165,13 +165,6 @@ void Ensenso::loadRegisteredPointCloud(PointCloudCamera::PointCloud & cloud, cv:
 		executeNx(command);
 	}
 
-	// Compute point cloud.
-	{
-		NxLibCommand command(cmdComputePointMap);
-		setNx(command.parameters()[itmCameras], serial);
-		executeNx(command);
-	}
-
 	// Render point cloud.
 	{
 		NxLibCommand command(cmdRenderPointMap);
