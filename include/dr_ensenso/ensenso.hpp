@@ -25,6 +25,9 @@ protected:
 	boost::optional<NxLibItem> overlay_camera;
 
 public:
+	/// Ensenso calibration result (camera pose, pattern pose, iterations needed, reprojection error).
+	using CalibrationResult = std::tuple<Eigen::Isometry3d, Eigen::Isometry3d, int, double>;
+
 	/// Connect to an ensenso camera.
 	Ensenso(bool connect_overlay = true);
 
@@ -75,8 +78,8 @@ public:
 	 */
 	bool retrieve(bool trigger = true, unsigned int timeout = 1500, bool stereo = true, bool overlay=true) const;
 
-	/// Returns the pose of the camera with respect to the calibration plate.
-	bool calibrate(int const num_patterns, Eigen::Isometry3d & pose) const;
+	/// Returns the pose of the calibration plate with respect to the camera.
+	bool calibrate(int const num_patterns, Eigen::Isometry3d & pose);
 
 	/// Returns the size of the intensity images.
 	cv::Size getIntensitySize();
@@ -130,6 +133,21 @@ public:
 	 * \param capture If true, capture a new image before loading the point cloud.
 	 */
 	void loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, cv::Rect roi = cv::Rect(), bool capture = true);
+
+	/// Discards all stored calibration patterns.
+	void discardPatterns();
+
+	/// Records a calibration pattern.
+	void recordCalibrationPattern();
+
+	/// Performs calibration using previously recorded calibration results and the corresponding robot poses.
+	CalibrationResult computeCalibration(
+		std::vector<Eigen::Isometry3d> const & robot_poses,                      ///< Vector of robot poses corresponding to the stored calibration patterns.
+		bool moving,                                                             ///< If true, the camera is expected to be in hand. Otherwise the camera is expected to be fixed.
+		Eigen::Isometry3d const & camera_guess = Eigen::Isometry3d::Identity(),  ///< Initial guess for the camera relative to the hand (camera in hand) or camera relative to robot base (camera fixed). Not necessary, but speeds up calibration.
+		Eigen::Isometry3d const & pattern_guess = Eigen::Isometry3d::Identity(), ///< Initial guess for the pattern relative to the hand (camera in hand) or pattern relative to robot base (camera fixed). Not necessary, but speeds up calibration.
+		std::string const & target = ""                                          ///< Target frame to calibrate to. Default is "Hand" for camera in hand and "Workspace" for fixed camera.
+	);
 
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).

@@ -84,9 +84,9 @@ std::int64_t getNxBinaryTimestamp(NxLibItem const & item, std::string const & wh
  * \throw NxError on failure.
  */
 template<typename T>
-void setNx(NxLibItem const & item, T && value, std::string const & what = "") {
+void setNx(NxLibItem const & item, T const & value, std::string const & what = "") {
 	int error = 0;
-	item.set(&error, std::forward<T>(value));
+	item.set(&error, value);
 	if (error) throw NxError(item, error, what);
 }
 

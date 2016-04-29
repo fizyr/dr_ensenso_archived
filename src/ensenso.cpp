@@ -69,26 +69,11 @@ bool Ensenso::retrieve(bool trigger, unsigned int timeout, bool stereo, bool ove
 	return true;
 }
 
-bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) const {
-	executeNx(NxLibCommand(cmdDiscardPatterns));
+bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) {
+	discardPatterns();
 
 	for (int i = 0; i < num_patterns; ++i) {
-		// Capture image with front-light.
-		setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], false);
-		setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], true);
-
-		retrieve(true, 1500, true, false);
-		NxLibCommand command_capture(cmdCapture);
-		executeNx(command_capture);
-
-		setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], false);
-		setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], true);
-
-		// Find the pattern.
-		NxLibCommand command_collect_pattern(cmdCollectPattern);
-		setNx(command_collect_pattern.parameters()[itmCameras], serialNumber());
-		setNx(command_collect_pattern.parameters()[itmDecodeData], true);
-		executeNx(command_collect_pattern);
+		recordCalibrationPattern();
 	}
 
 	// Get the pose of the pattern.
@@ -167,13 +152,6 @@ void Ensenso::loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, c
 		executeNx(command);
 	}
 
-	// Compute point cloud.
-	{
-		NxLibCommand command(cmdComputePointMap);
-		setNx(command.parameters()[itmCameras], serial);
-		executeNx(command);
-	}
-
 	// Render point cloud.
 	{
 		NxLibCommand command(cmdRenderPointMap);
@@ -202,7 +180,86 @@ void Ensenso::setRegionOfInterest(cv::Rect const & roi) {
 		setNx(ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][0], roi.br().x);
 		setNx(ensenso_camera[itmParameters][itmDisparityMap][itmAreaOfInterest][itmRightBottom][1], roi.br().y);
 	}
+}
 
+void Ensenso::discardPatterns() {
+	executeNx(NxLibCommand(cmdDiscardPatterns));
+}
+
+void Ensenso::recordCalibrationPattern() {
+	// disable FlexView
+	int flexView = getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], false);
+
+	// Capture image with front-light.
+	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], false);
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], true);
+
+	retrieve(true, 1500, true, false);
+
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], false);
+	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], true);
+
+	// Find the pattern.
+	NxLibCommand command_collect_pattern(cmdCollectPattern);
+	setNx(command_collect_pattern.parameters()[itmCameras], serialNumber());
+	setNx(command_collect_pattern.parameters()[itmDecodeData], true);
+
+	executeNx(command_collect_pattern);
+
+	// restore FlexView setting
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], flexView);
+}
+
+Ensenso::CalibrationResult Ensenso::computeCalibration(
+	std::vector<Eigen::Isometry3d> const & robot_poses,
+	bool moving,
+	Eigen::Isometry3d const & camera_guess,
+	Eigen::Isometry3d const & pattern_guess,
+	std::string const & target
+) {
+	NxLibCommand calibrate(cmdCalibrateHandEye);
+
+	// camera pose initial guess
+	if (!camera_guess.isApprox(Eigen::Isometry3d::Identity())) {
+		setNx(calibrate.parameters()[itmLink], camera_guess);
+	}
+
+	// pattern pose initial guess
+	if (!pattern_guess.isApprox(Eigen::Isometry3d::Identity())) {
+		setNx(calibrate.parameters()[itmPatternPose], pattern_guess);
+	}
+
+	// setup (camera in hand / camera fixed)
+	setNx(calibrate.parameters()[itmSetup], moving ? valMoving : valFixed);
+
+	// name of the target coordinate system
+	if (target != "") {
+		setNx(calibrate.parameters()[itmTarget], target);
+	}
+
+	// copy robot poses to parameters
+	for (size_t i = 0; i < robot_poses.size(); i++) {
+		Eigen::Isometry3d scaled_robot_pose = robot_poses[i];
+		scaled_robot_pose.translation() *= 1000;
+		setNx(calibrate.parameters()[itmTransformations][i], scaled_robot_pose);
+	}
+
+	// execute calibration command
+	executeNx(calibrate);
+
+	// return result (camera pose, pattern pose, iterations, reprojection error)
+	Eigen::Isometry3d camera_pose  = toEigenIsometry(ensenso_camera[itmLink]);
+	Eigen::Isometry3d pattern_pose = toEigenIsometry(calibrate.result()[itmPatternPose]);
+	camera_pose.translation()  *= 0.001;
+	pattern_pose.translation() *= 0.001;
+
+	return Ensenso::CalibrationResult{
+		camera_pose,
+		pattern_pose,
+		getNx<int>(calibrate.result()[itmIterations]),
+		getNx<double>(calibrate.result()[itmReprojectionError])
+	};
 }
 
 }
