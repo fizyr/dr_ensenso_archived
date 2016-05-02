@@ -233,12 +233,12 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 
 	// camera pose initial guess
 	if (camera_guess) {
-		setNx(calibrate.parameters()[itmLink], camera_guess);
+		setNx(calibrate.parameters()[itmLink], *camera_guess);
 	}
 
 	// pattern pose initial guess
 	if (pattern_guess) {
-		setNx(calibrate.parameters()[itmPatternPose], pattern_guess);
+		setNx(calibrate.parameters()[itmPatternPose], *pattern_guess);
 	}
 
 	// setup (camera in hand / camera fixed)
