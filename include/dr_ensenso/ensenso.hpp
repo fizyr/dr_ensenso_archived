@@ -143,12 +143,14 @@ public:
 
 	/// Performs calibration using previously recorded calibration results and the corresponding robot poses.
 	CalibrationResult computeCalibration(
-		std::vector<Eigen::Isometry3d> const & robot_poses,                      ///< Vector of robot poses corresponding to the stored calibration patterns.
-		bool moving,                                                             ///< If true, the camera is expected to be in hand. Otherwise the camera is expected to be fixed.
-		Eigen::Isometry3d const & camera_guess = Eigen::Isometry3d::Identity(),  ///< Initial guess for the camera relative to the hand (camera in hand) or camera relative to robot base (camera fixed). Not necessary, but speeds up calibration.
-		Eigen::Isometry3d const & pattern_guess = Eigen::Isometry3d::Identity(), ///< Initial guess for the pattern relative to the hand (camera in hand) or pattern relative to robot base (camera fixed). Not necessary, but speeds up calibration.
-		std::string const & target = ""                                          ///< Target frame to calibrate to. Default is "Hand" for camera in hand and "Workspace" for fixed camera.
+		std::vector<Eigen::Isometry3d> const & robot_poses,            ///< Vector of robot poses corresponding to the stored calibration patterns.
+		bool moving,                                                   ///< If true, the camera is expected to be in hand. Otherwise the camera is expected to be fixed.
+		boost::optional<Eigen::Isometry3d> const & camera_guess = {},  ///< Initial guess for the camera relative to the hand (camera in hand) or camera relative to robot base (camera fixed). Not necessary, but speeds up calibration.
+		boost::optional<Eigen::Isometry3d> const & pattern_guess = {}, ///< Initial guess for the pattern relative to the hand (camera in hand) or pattern relative to robot base (camera fixed). Not necessary, but speeds up calibration.
+		std::string const & target = ""                                ///< Target frame to calibrate to. Default is "Hand" for camera in hand and "Workspace" for fixed camera.
 	);
+
+	boost::optional<Eigen::Isometry3d> getCameraLink();
 
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).

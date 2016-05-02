@@ -208,25 +208,25 @@ void Ensenso::recordCalibrationPattern() {
 	executeNx(command_collect_pattern);
 
 	// restore FlexView setting
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], flexView);
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], flex_view);
 }
 
 Ensenso::CalibrationResult Ensenso::computeCalibration(
 	std::vector<Eigen::Isometry3d> const & robot_poses,
 	bool moving,
-	Eigen::Isometry3d const & camera_guess,
-	Eigen::Isometry3d const & pattern_guess,
+	boost::optional<Eigen::Isometry3d> const & camera_guess,
+	boost::optional<Eigen::Isometry3d> const & pattern_guess,
 	std::string const & target
 ) {
 	NxLibCommand calibrate(cmdCalibrateHandEye);
 
 	// camera pose initial guess
-	if (!camera_guess.isApprox(Eigen::Isometry3d::Identity())) {
+	if (camera_guess) {
 		setNx(calibrate.parameters()[itmLink], camera_guess);
 	}
 
 	// pattern pose initial guess
-	if (!pattern_guess.isApprox(Eigen::Isometry3d::Identity())) {
+	if (pattern_guess) {
 		setNx(calibrate.parameters()[itmPatternPose], pattern_guess);
 	}
 
