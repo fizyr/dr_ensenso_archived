@@ -286,4 +286,17 @@ boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
 	return link;
 }
 
+void Ensenso::clearWorkspace() {
+	// check for no Workspace
+	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
+	if (target == "") {
+		return;
+	}
+
+	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
+	NxLibCommand command(cmdCalibrateWorkspace);
+	setNx(command.parameters()[itmCameras][0], serialNumber());
+	executeNx(command);
+}
+
 }
