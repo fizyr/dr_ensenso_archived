@@ -86,9 +86,9 @@ bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) {
 	pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
 	pose.translation() *= 0.001;
 
-	boost::optional<Eigen::Isometry3d> camera_link = getCameraLink();
-	if (!camera_link) return false;
-	pose = pose * (*camera_link);
+	boost::optional<Eigen::Isometry3d> camera_pose = getCameraPose();
+	if (!camera_pose) return false;
+	pose = *camera_pose * pose;
 
 	// restore FlexView setting
 	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], flex_view);
@@ -273,12 +273,13 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 	};
 }
 
-boost::optional<Eigen::Isometry3d> Ensenso::getCameraLink() {
+boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
 	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
 	if (target == "") {
 		return {};
 	}
 
+	// convert from mm to m
 	Eigen::Isometry3d link = toEigenIsometry(ensenso_camera[itmLink]);
 	link.translation() *= 0.001;
 

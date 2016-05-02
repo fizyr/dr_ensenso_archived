@@ -150,7 +150,8 @@ public:
 		std::string const & target = ""                                ///< Target frame to calibrate to. Default is "Hand" for camera in hand and "Workspace" for fixed camera.
 	);
 
-	boost::optional<Eigen::Isometry3d> getCameraLink();
+	/// Pose of the camera in workspace frame. If no workspace is set, returns an empty boost optional.
+	boost::optional<Eigen::Isometry3d> getCameraPose();
 
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
