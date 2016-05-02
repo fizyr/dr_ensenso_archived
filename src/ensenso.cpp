@@ -76,11 +76,22 @@ bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) {
 		recordCalibrationPattern();
 	}
 
+	// disable FlexView (should not be necessary here, but appears to be necessary for cmdEstimatePatternPose)
+	int flex_view = getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], false);
+
 	// Get the pose of the pattern.
 	NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
 	executeNx(command_estimate_pose);
 	pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
 	pose.translation() *= 0.001;
+
+	boost::optional<Eigen::Isometry3d> camera_link = getCameraLink();
+	if (!camera_link) return false;
+	pose = pose * (*camera_link);
+
+	// restore FlexView setting
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], flex_view);
 	return true;
 }
 
@@ -188,7 +199,7 @@ void Ensenso::discardPatterns() {
 
 void Ensenso::recordCalibrationPattern() {
 	// disable FlexView
-	int flexView = getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
+	int flex_view = getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
 	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], false);
 
 	// Capture image with front-light.
@@ -260,6 +271,18 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 		getNx<int>(calibrate.result()[itmIterations]),
 		getNx<double>(calibrate.result()[itmReprojectionError])
 	};
+}
+
+boost::optional<Eigen::Isometry3d> Ensenso::getCameraLink() {
+	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
+	if (target == "") {
+		return {};
+	}
+
+	Eigen::Isometry3d link = toEigenIsometry(ensenso_camera[itmLink]);
+	link.translation() *= 0.001;
+
+	return link;
 }
 
 }
