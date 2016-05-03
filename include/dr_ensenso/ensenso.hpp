@@ -152,6 +152,9 @@ public:
 	/// Pose of the camera in workspace frame. If no workspace is set, returns an empty boost optional.
 	boost::optional<Eigen::Isometry3d> getCameraPose();
 
+	/// Clears the Workspace, if it exists.
+	void clearWorkspace();
+
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
 	void setRegionOfInterest(cv::Rect const & roi);

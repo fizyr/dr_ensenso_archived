@@ -233,12 +233,12 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 
 	// camera pose initial guess
 	if (camera_guess) {
-		setNx(calibrate.parameters()[itmLink], camera_guess);
+		setNx(calibrate.parameters()[itmLink], *camera_guess);
 	}
 
 	// pattern pose initial guess
 	if (pattern_guess) {
-		setNx(calibrate.parameters()[itmPatternPose], pattern_guess);
+		setNx(calibrate.parameters()[itmPatternPose], *pattern_guess);
 	}
 
 	// setup (camera in hand / camera fixed)
@@ -284,6 +284,19 @@ boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
 	link.translation() *= 0.001;
 
 	return link;
+}
+
+void Ensenso::clearWorkspace() {
+	// check for no Workspace
+	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
+	if (target == "") {
+		return;
+	}
+
+	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
+	NxLibCommand command(cmdCalibrateWorkspace);
+	setNx(command.parameters()[itmCameras][0], serialNumber());
+	executeNx(command);
 }
 
 }
