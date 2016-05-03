@@ -276,7 +276,7 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
 	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
 	if (target == "") {
-		return {};
+		return boost::none;
 	}
 
 	// convert from mm to m
