@@ -77,21 +77,27 @@ bool Ensenso::calibrate(int const num_patterns, Eigen::Isometry3d & pose) {
 	}
 
 	// disable FlexView (should not be necessary here, but appears to be necessary for cmdEstimatePatternPose)
-	int flex_view = getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], false);
+	int flex_view = flexView();
+	if (flex_view > 0) setFlexView(0);
 
 	// Get the pose of the pattern.
 	NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
 	executeNx(command_estimate_pose);
+
+	// restore FlexView setting
+	if (flex_view > 0) {
+		setFlexView(flex_view);
+	}
+
 	pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
 	pose.translation() *= 0.001;
 
+	// transform back for camera pose
 	boost::optional<Eigen::Isometry3d> camera_pose = getCameraPose();
-	if (!camera_pose) return false;
-	pose = *camera_pose * pose;
+	if (camera_pose) {
+		pose = *camera_pose * pose;
+	}
 
-	// restore FlexView setting
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], flex_view);
 	return true;
 }
 
@@ -199,8 +205,8 @@ void Ensenso::discardPatterns() {
 
 void Ensenso::recordCalibrationPattern() {
 	// disable FlexView
-	int flex_view = getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], false);
+	int flex_view = flexView();
+	if (flex_view > 0) setFlexView(0);
 
 	// Capture image with front-light.
 	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], false);
@@ -219,7 +225,9 @@ void Ensenso::recordCalibrationPattern() {
 	executeNx(command_collect_pattern);
 
 	// restore FlexView setting
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], flex_view);
+	if (flex_view > 0) {
+		setFlexView(flex_view);
+	}
 }
 
 Ensenso::CalibrationResult Ensenso::computeCalibration(
@@ -286,8 +294,8 @@ boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
 	return link;
 }
 
-void Ensenso::clearWorkspace() {
-	// check for no Workspace
+void Ensenso::clearCameraPose() {
+	// check for no target
 	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
 	if (target == "") {
 		return;
@@ -297,6 +305,9 @@ void Ensenso::clearWorkspace() {
 	NxLibCommand command(cmdCalibrateWorkspace);
 	setNx(command.parameters()[itmCameras][0], serialNumber());
 	executeNx(command);
+
+	// clear target name
+	setNx(ensenso_camera[itmLink][itmTarget], "");
 }
 
 }

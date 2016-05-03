@@ -152,8 +152,23 @@ public:
 	/// Pose of the camera in workspace frame. If no workspace is set, returns an empty boost optional.
 	boost::optional<Eigen::Isometry3d> getCameraPose();
 
-	/// Clears the Workspace, if it exists.
-	void clearWorkspace();
+	/// Clears the camera pose, if it exists.
+	void clearCameraPose();
+
+	/// Returns the current FlexView value. If disabled, returns -1.
+	int flexView() {
+		try {
+			// in case FlexView = false, getting the int value gives an error
+			return getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
+		} catch (NxError const & e) {
+			return -1;
+		}
+	}
+
+	/// Sets the Ensenso camera FlexView value.
+	void setFlexView(int value) {
+		setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], value);
+	}
 
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
