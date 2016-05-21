@@ -241,12 +241,16 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 
 	// camera pose initial guess
 	if (camera_guess) {
-		setNx(calibrate.parameters()[itmLink], *camera_guess);
+		Eigen::Isometry3d scaled_camera_guess = *camera_guess;
+		scaled_camera_guess.translation() *= 1000;
+		setNx(calibrate.parameters()[itmLink], scaled_camera_guess);
 	}
 
 	// pattern pose initial guess
 	if (pattern_guess) {
-		setNx(calibrate.parameters()[itmPatternPose], *pattern_guess);
+		Eigen::Isometry3d scaled_pattern_guess = *pattern_guess;
+		scaled_pattern_guess.translation() *= 1000;
+		setNx(calibrate.parameters()[itmPatternPose], scaled_pattern_guess);
 	}
 
 	// setup (camera in hand / camera fixed)
