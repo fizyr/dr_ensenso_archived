@@ -241,12 +241,16 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 
 	// camera pose initial guess
 	if (camera_guess) {
-		setNx(calibrate.parameters()[itmLink], *camera_guess);
+		Eigen::Isometry3d scaled_camera_guess = *camera_guess;
+		scaled_camera_guess.translation() *= 1000;
+		setNx(calibrate.parameters()[itmLink], scaled_camera_guess);
 	}
 
 	// pattern pose initial guess
 	if (pattern_guess) {
-		setNx(calibrate.parameters()[itmPatternPose], *pattern_guess);
+		Eigen::Isometry3d scaled_pattern_guess = *pattern_guess;
+		scaled_pattern_guess.translation() *= 1000;
+		setNx(calibrate.parameters()[itmPatternPose], scaled_pattern_guess);
 	}
 
 	// setup (camera in hand / camera fixed)
@@ -294,7 +298,7 @@ boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
 	return link;
 }
 
-void Ensenso::clearCameraPose() {
+void Ensenso::clearWorkspace() {
 	// check for no target
 	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
 	if (target == "") {
@@ -308,6 +312,18 @@ void Ensenso::clearCameraPose() {
 
 	// clear target name
 	setNx(ensenso_camera[itmLink][itmTarget], "");
+}
+
+
+void Ensenso::setWorkspace(Eigen::Isometry3d workspace) {
+	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
+	NxLibCommand command(cmdCalibrateWorkspace);
+	setNx(command.parameters()[itmCameras][0], serialNumber());
+
+	// scale to [mm]
+	workspace.translation() *= 1000;
+	setNx(command.parameters()[itmPatternPose], workspace);
+	executeNx(command);
 }
 
 }
