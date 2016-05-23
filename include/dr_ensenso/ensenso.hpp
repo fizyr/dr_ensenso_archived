@@ -173,6 +173,9 @@ public:
 	/// Sets the Workspace calibration link.
 	void setWorkspace(Eigen::Isometry3d workspace);
 
+	/// Stores the caliration on the EEPROM of the camera.
+	void storeCalibration();
+
 protected:
 	/// Set the region of interest for the disparity map (and thereby depth / point cloud).
 	void setRegionOfInterest(cv::Rect const & roi);

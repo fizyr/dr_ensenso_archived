@@ -326,4 +326,10 @@ void Ensenso::setWorkspace(Eigen::Isometry3d workspace) {
 	executeNx(command);
 }
 
+void Ensenso::storeCalibration() {
+	NxLibCommand command(cmdStoreCalibration);
+	setNx(command.parameters()[itmCameras][0], serialNumber());
+	executeNx(command);
+}
+
 }
