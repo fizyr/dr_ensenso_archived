@@ -272,7 +272,7 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 	executeNx(calibrate);
 
 	// return result (camera pose, pattern pose, iterations, reprojection error)
-	Eigen::Isometry3d camera_pose  = toEigenIsometry(ensenso_camera[itmLink]);
+	Eigen::Isometry3d camera_pose  = toEigenIsometry(ensenso_camera[itmLink]).inverse(); // "Link" is inversed
 	Eigen::Isometry3d pattern_pose = toEigenIsometry(calibrate.result()[itmPatternPose]);
 	camera_pose.translation()  *= 0.001;
 	pattern_pose.translation() *= 0.001;
