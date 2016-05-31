@@ -96,4 +96,25 @@ void dumpParameters(
 	writeNxJsonToFile(item, filename);
 }
 
+void dumpParametersYaml(
+	NxLibItem const & item,
+	std::string const & path_prefix,
+	std::string const & path_suffix,
+	std::string const & time_format
+) {
+	std::string filename = path_prefix + formatTime(boost::posix_time::microsec_clock::universal_time(), time_format) + path_suffix + ".yaml";
+
+	cv::FileStorage file(filename, cv::FileStorage::WRITE);
+	if (!file.isOpened()) {
+		throw std::runtime_error("Failed to open file " + filename);
+	}
+
+	file << "camera_matrix" << toCameraMatrix(item);
+	file << "distortion_coefficients" << toDistortionParameters(item);
+	file << "rectification_matrix" << toRectificationMatrix(item);
+	file << "projection_matrix" << toProjectionMatrix(item);
+
+	file.release();
+}
+
 }
