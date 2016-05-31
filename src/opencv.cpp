@@ -18,4 +18,51 @@ cv::Mat toCvMat(NxLibItem const & item, std::string const & what) {
 	return result;
 }
 
+cv::Mat toCameraMatrix(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
+	for (std::size_t i=0; i<3; i++) {
+		for (std::size_t j=0; j<3; j++) {
+			result.at<double>(i,j) = item[itmMonocular][itmLeft][itmCamera][j][i].asDouble(&error);
+			if (error) throw NxError(item, error, what);
+		}
+	}
+	return result;
+}
+
+cv::Mat toDistortionParameters(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	cv::Mat result = cv::Mat::zeros(8, 1, CV_64F);
+	for (std::size_t i=0; i<5; i++) {
+		result.at<double>(i) = item[itmMonocular][itmLeft][itmDistortion][i].asDouble(&error);
+		if (error) throw NxError(item, error, what);
+	}
+	return result;
+}
+
+cv::Mat toProjectionMatrix(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
+	for (std::size_t i=0; i<3; i++) {
+		for (std::size_t j=0; j<3; j++) {
+			result.at<double>(i,j) = item[itmStereo][itmLeft][itmCamera][j][i].asDouble(&error);
+			if (error) throw NxError(item, error, what);
+		}
+	}
+	result.at<double>(3,3) = 1.0;
+	return result;
+}
+
+cv::Mat toRectificationMatrix(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
+	for (std::size_t i=0; i<3; i++) {
+		for (std::size_t j=0; j<3; j++) {
+			result.at<double>(i,j) = item[itmStereo][itmLeft][itmRotation][j][i].asDouble(&error);
+			if (error) throw NxError(item, error, what);
+		}
+	}
+	return result;
+}
+
 }
