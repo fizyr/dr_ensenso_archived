@@ -87,7 +87,8 @@ public:
 		dr::dumpParameters(camera_[itmParameters],  output_directory + "/", "_" + ensenso_.serialNumber() + "_parameters");
 		dr::dumpParameters(camera_[itmCalibration], output_directory + "/", "_" + ensenso_.serialNumber() + "_calibration");
 		dr::dumpParameters(camera_[itmLink],        output_directory + "/", "_" + ensenso_.serialNumber() + "_link");
-		dr::dumpParametersYaml(camera_[itmCalibration], output_directory + "/", "_" + ensenso_.serialNumber() + "_link");
+		dr::dumpParametersYaml(camera_[itmCalibration], "Left", output_directory + "/", "_" + ensenso_.serialNumber());
+		dr::dumpParametersYaml(camera_[itmCalibration], "Right", output_directory + "/", "_" + ensenso_.serialNumber());
 		if (overlay_) {
 			dr::dumpParameters(overlay_.get()[itmParameters],  output_directory + "/", "_" + ensenso_.overlaySerialNumber() + "_parameters");
 			dr::dumpParameters(overlay_.get()[itmCalibration], output_directory + "/", "_" + ensenso_.overlaySerialNumber() + "_calibration");
