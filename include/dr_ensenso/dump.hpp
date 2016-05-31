@@ -53,6 +53,7 @@ namespace dr {
 	/// Dump the parameters of a camera as a OpenCV yaml.
 	void dumpParametersYaml(
 		NxLibItem const & item,                                ///< An NxLibItem representing the camera parameters.
+		std::string const & camera,                            ///< Camera for which to dump parameters.
 		std::string const & path_prefix,                       ///< A string to prepend before the timestamp to form the filename.
 		std::string const & path_suffix,                       ///< A string to append after the timestamp to form the filename.
 		std::string const & time_format = default_time_format  ///< A Boost DateTime compatible format string for time formatting.
