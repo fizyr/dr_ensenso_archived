@@ -48,7 +48,7 @@ int main(int argc, char * * argv) {
 	right_model.fromCameraInfo(camera_info_right);
 
 	cv::Point2d left_rectified  = left_model.rectifyPoint(left_points.at(1));
-	cv::Point2d right_rectified = left_model.rectifyPoint(right_points.at(1));
+	cv::Point2d right_rectified = right_model.rectifyPoint(right_points.at(1));
 
 	double baseline(-camera_info_right.P[3] / camera_info_left.P[0]);
 	float x,y,z;
