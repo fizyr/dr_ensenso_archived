@@ -3,6 +3,7 @@
 #include <camera_calibration_parsers/parse.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <ros/package.h>
+#include <dr_pcl/3d_reconstruction.hpp>
 
 namespace dr {
 
@@ -41,23 +42,22 @@ int main(int argc, char * * argv) {
 	image_geometry::PinholeCameraModel right_model;
 	right_model.fromCameraInfo(camera_info_right);
 
-	cv::Point2d left_rectified = left_model.rectifyPoint(left_points.at(0));
-	cv::Point2d right_rectified = left_model.rectifyPoint(right_points.at(0));
+	cv::Point2d left_rectified = left_model.rectifyPoint(left_points.at(1));
+	cv::Point2d right_rectified = left_model.rectifyPoint(right_points.at(1));
 
-	double disparity = right_rectified.x - left_rectified.x;
-	std::cout << "disparity: " << disparity << std::endl;
-	double focus = (camera_info_left.P[0] + camera_info_left.P[5]) / 2;
-	double baseline = -camera_info_right.P[3] / camera_info_left.P[0];
-	std::cout << "focus: " << focus << std::endl;
-	std::cout << "baseline: " << baseline << std::endl;
-	double depth = (focus * baseline) / disparity;
+	double baseline(-camera_info_right.P[3] / camera_info_left.P[0]);
+	float x,y,z;
+	dr::get3dCoordinates(
+		cv::Point2f(left_rectified.x, left_rectified.y),            // Coordinates of the point in the left image
+		cv::Point2f(right_rectified.x, right_rectified.y),          // Coordinates of the point in the right image
+		baseline,                                                   // Camera's baseline
+		cv::Point2f(camera_info_left.P[0], camera_info_left.P[5]),  // Camera's focal length
+		cv::Point2f(camera_info_left.P[2], camera_info_left.P[6]),  // Camera's image center
+		x,                                                          // Output point's X coordinate
+		y,                                                          // Output point's Y coordinate
+		z                                                           // Output point's Z coordinate
+	);
 
-	cv::Point3d ray = left_model.projectPixelTo3dRay(left_rectified);
-	std::cout << "ray " << ray << std::endl;
-	std::cout << "depth " << depth << std::endl;
-	double norm = cv::norm(ray);
-	cv::Point3d xyz = (depth / norm) * ray;
-
-	std::cout << "xyz: '" << xyz << "'." << std::endl;
+	std::cout << "xyz: " << cv::Point3d(x,y,z) << std::endl;
 
 }
