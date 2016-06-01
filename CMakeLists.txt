@@ -9,6 +9,9 @@ find_package(catkin REQUIRED COMPONENTS
 	pcl_ros
 	pcl_conversions
 	cmake_modules
+	sensor_msgs
+	camera_calibration_parsers
+	image_geometry
 )
 
 find_package(Ensenso REQUIRED)

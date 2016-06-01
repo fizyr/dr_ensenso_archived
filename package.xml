@@ -18,6 +18,9 @@
 	<depend>eigen</depend>
 	<depend>opencv</depend>
 	<depend>pcl</depend>
+	<depend>sensor_msgs</depend>
+	<depend>camera_calibration_parsers</depend>
+	<depend>image_geometry</depend>
 
 	<export>
 	</export>
