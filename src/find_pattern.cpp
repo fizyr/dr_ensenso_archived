@@ -13,7 +13,12 @@ std::vector<cv::Point2f> findPattern(cv::Mat const & image) {
 
 	cv::SimpleBlobDetector::Params params;
 	params.filterByColor = false;
+
+#if CV_MAJOR_VERSION < 3
 	cv::Ptr<cv::FeatureDetector> blob_detector = new cv::SimpleBlobDetector(params);
+#else
+	cv::Ptr<cv::FeatureDetector> blob_detector = cv::SimpleBlobDetector::create(params);
+#endif
 
 	cv::findCirclesGrid(image, pattern_size, image_points, cv::CALIB_CB_SYMMETRIC_GRID, blob_detector);
 	return image_points;
@@ -42,7 +47,7 @@ int main(int argc, char * * argv) {
 	image_geometry::PinholeCameraModel right_model;
 	right_model.fromCameraInfo(camera_info_right);
 
-	cv::Point2d left_rectified = left_model.rectifyPoint(left_points.at(1));
+	cv::Point2d left_rectified  = left_model.rectifyPoint(left_points.at(1));
 	cv::Point2d right_rectified = left_model.rectifyPoint(right_points.at(1));
 
 	double baseline(-camera_info_right.P[3] / camera_info_left.P[0]);
