@@ -46,6 +46,9 @@ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${SYSTEM_LIBRARIES})
 add_executable(ensenso_viewer src/ensenso_viewer.cpp)
 target_link_libraries(ensenso_viewer ${PROJECT_NAME} ${catkin_LIBRARIES} ${SYSTEM_LIBRARIES})
 
+add_executable(find_pattern src/find_pattern.cpp)
+target_link_libraries(find_pattern ${PROJECT_NAME} ${catkin_LIBRARIES} ${SYSTEM_LIBRARIES})
+
 add_executable(${PROJECT_NAME}_dump_tool src/dump_tool.cpp)
 target_link_libraries(${PROJECT_NAME}_dump_tool ${PROJECT_NAME} ${catkin_LIBRARIES} ${SYSTEM_LIBRARIES})
 
