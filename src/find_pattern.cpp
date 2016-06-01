@@ -2,6 +2,7 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <camera_calibration_parsers/parse.h>
 #include <image_geometry/pinhole_camera_model.h>
+#include <image_geometry/stereo_camera_model.h>
 #include <ros/package.h>
 #include <dr_pcl/3d_reconstruction.hpp>
 
@@ -41,16 +42,17 @@ int main(int argc, char * * argv) {
 	camera_calibration_parsers::readCalibration(ros::package::getPath("dr_ensenso") + "/data/Left.yaml", camera_name_left, camera_info_left);
 	camera_calibration_parsers::readCalibration(ros::package::getPath("dr_ensenso") + "/data/Right.yaml", camera_name_right, camera_info_right);
 
-	image_geometry::PinholeCameraModel left_model;
-	left_model.fromCameraInfo(camera_info_left);
+	image_geometry::StereoCameraModel stereo_model;
+	stereo_model.fromCameraInfo(camera_info_left, camera_info_right);
 
-	image_geometry::PinholeCameraModel right_model;
-	right_model.fromCameraInfo(camera_info_right);
+	int point_index(0);
+	cv::Point2d left_rectified  = stereo_model.left().rectifyPoint(left_points.at(point_index));
+	cv::Point2d right_rectified = stereo_model.right().rectifyPoint(right_points.at(point_index));
 
-	cv::Point2d left_rectified  = left_model.rectifyPoint(left_points.at(1));
-	cv::Point2d right_rectified = right_model.rectifyPoint(right_points.at(1));
-
-	double baseline(-camera_info_right.P[3] / camera_info_left.P[0]);
+	double baseline(stereo_model.baseline());
+	std::cout << "baseline " << baseline << std::endl;
+	std::cout << "Get Z " << stereo_model.getZ(left_rectified.x-right_rectified.x) << std::endl;
+	// ToDO: Correct for CX_Left - CX_Right (See image geometry) -right_.Tx() / (disparity - (left().cx() - right().cx()));
 	float x,y,z;
 	dr::get3dCoordinates(
 		cv::Point2f(left_rectified.x, left_rectified.y),            // Coordinates of the point in the left image
