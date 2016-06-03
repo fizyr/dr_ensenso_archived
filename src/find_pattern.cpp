@@ -42,7 +42,14 @@ std::vector<cv::Point2f> findPattern(cv::Mat const & image) {
 	cv::Ptr<cv::FeatureDetector> blob_detector = cv::SimpleBlobDetector::create(params);
 #endif
 
-	cv::findCirclesGrid(image, pattern_size, image_points, cv::CALIB_CB_SYMMETRIC_GRID, blob_detector);
+	bool found = cv::findCirclesGrid(image, pattern_size, image_points, cv::CALIB_CB_SYMMETRIC_GRID, blob_detector);
+
+	cv::Mat draw;
+	image.copyTo(draw);
+	cv::drawChessboardCorners(draw, pattern_size, image_points, found);
+	cv::imshow("draw",draw);
+	cv::waitKey();
+
 	return image_points;
 }
 
@@ -70,10 +77,23 @@ int main(int argc, char * * argv) {
 	(void) argv;
 
 	cv::Mat left_image  = cv::imread(ros::package::getPath("dr_ensenso") + "/data/raw_left.png", CV_LOAD_IMAGE_GRAYSCALE);
+	if (left_image.empty()) {
+		std::cerr << "Could not load image" << std::endl;
+		return 1;
+	}
 	cv::Mat right_image = cv::imread(ros::package::getPath("dr_ensenso") + "/data/raw_right.png", CV_LOAD_IMAGE_GRAYSCALE);
+	if (right_image.empty()) {
+		std::cerr << "Could not load image" << std::endl;
+		return 1;
+	}
 
 	std::vector<cv::Point2f> left_points  = dr::findPattern(left_image);
 	std::vector<cv::Point2f> right_points = dr::findPattern(right_image);
+
+	if (left_points.size() == 0 || right_points.size() == 0) {
+		std::cerr << "Pattern not detected" << std::endl;
+		return 1;
+	}
 
 	sensor_msgs::CameraInfo camera_info_left, camera_info_right;
 	std::string camera_name_left, camera_name_right;
@@ -106,4 +126,5 @@ int main(int argc, char * * argv) {
 		dr::makeFakeShared(measured_pattern)
 	);
 	std::cout << "Isometry: \n" << isometry.matrix() << std::endl;
+	std::cout << "Isometry inverse: \n" << isometry.matrix().inverse() << std::endl;
 }
