@@ -9,6 +9,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
+#include "ensenso.hpp"
+#include "opencv.hpp"
+#include "util.hpp"
 
 namespace dr {
 
@@ -69,32 +72,22 @@ pcl::PointCloud<pcl::PointXYZ> generateEnsensoCalibrationPattern() {
 	return result;
 }
 
-
-} // namespace
-
-int main(int argc, char * * argv) {
-	(void) argc;
-	(void) argv;
-
-	cv::Mat left_image  = cv::imread(ros::package::getPath("dr_ensenso") + "/data/raw_left.png", CV_LOAD_IMAGE_GRAYSCALE);
-	if (left_image.empty()) {
-		std::cerr << "Could not load image" << std::endl;
-		return 1;
+void getEnsensoPoints(std::vector<cv::Point2f> & left_points, std::vector<cv::Point2f> & right_points, size_t pattern_size) {
+	NxLibCommand get_pattern_buffers(cmdGetPatternBuffers);
+	dr::executeNx(get_pattern_buffers);
+	for (size_t i = 0; i < pattern_size*pattern_size; i++) {
+		left_points.push_back(cv::Point2f(
+				get_pattern_buffers.result()[itmStereo][0][itmPoints][0][i][0].asDouble(),
+				get_pattern_buffers.result()[itmStereo][0][itmPoints][0][i][1].asDouble()
+		));
+		right_points.push_back(cv::Point2f(
+			get_pattern_buffers.result()[itmStereo][0][itmPoints][1][i][0].asDouble(),
+			get_pattern_buffers.result()[itmStereo][0][itmPoints][1][i][1].asDouble()
+		));
 	}
-	cv::Mat right_image = cv::imread(ros::package::getPath("dr_ensenso") + "/data/raw_right.png", CV_LOAD_IMAGE_GRAYSCALE);
-	if (right_image.empty()) {
-		std::cerr << "Could not load image" << std::endl;
-		return 1;
-	}
+}
 
-	std::vector<cv::Point2f> left_points  = dr::findPattern(left_image);
-	std::vector<cv::Point2f> right_points = dr::findPattern(right_image);
-
-	if (left_points.size() == 0 || right_points.size() == 0) {
-		std::cerr << "Pattern not detected" << std::endl;
-		return 1;
-	}
-
+Eigen::Isometry3d getPatternPose(std::vector<cv::Point2f> const & left_points, std::vector<cv::Point2f> const & right_points) {
 	sensor_msgs::CameraInfo camera_info_left, camera_info_right;
 	std::string camera_name_left, camera_name_right;
 	camera_calibration_parsers::readCalibration(ros::package::getPath("dr_ensenso") + "/data/Left.yaml", camera_name_left, camera_info_left);
@@ -125,5 +118,32 @@ int main(int argc, char * * argv) {
 		dr::makeFakeShared(pattern),
 		dr::makeFakeShared(measured_pattern)
 	);
-	std::cout << "Pattern pose: \n" << isometry.matrix() << std::endl;
+	return isometry;
+}
+
+} // namespace
+
+int main(int argc, char * * argv) {
+	(void) argc;
+	(void) argv;
+
+	dr::Ensenso ensenso(false);
+	dr::setNx(ensenso.native()[itmParameters][itmCapture][itmProjector], false);
+	ensenso.retrieve(true,5000,true,false);
+	cv::Mat left_image = dr::toCvMat(ensenso.native()[itmImages][itmRaw][itmLeft]);
+	cv::Mat right_image = dr::toCvMat(ensenso.native()[itmImages][itmRaw][itmRight]);
+
+	// Get left and right image points as processed by ensenso sdk
+	ensenso.recordCalibrationPattern();
+	std::vector<cv::Point2f> left_points_ensenso, right_points_ensenso;
+	dr::getEnsensoPoints(left_points_ensenso, right_points_ensenso, 7);
+
+	std::vector<cv::Point2f> left_points_dr  = dr::findPattern(left_image);
+	std::vector<cv::Point2f> right_points_dr = dr::findPattern(right_image);
+
+	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr);
+	std::cout << "DR Pattern pose: \n" << isometry_dr.matrix() << std::endl;
+
+	Eigen::Isometry3d isometry_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso);
+	std::cout << "Ensenso Pattern pose: \n" << isometry_ensenso.matrix() << std::endl;
 }
