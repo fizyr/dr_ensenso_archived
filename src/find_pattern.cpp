@@ -5,8 +5,29 @@
 #include <image_geometry/stereo_camera_model.h>
 #include <ros/package.h>
 #include <dr_pcl/3d_reconstruction.hpp>
+#include <dr_pcl/pointcloud_tools.hpp>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+
 
 namespace dr {
+
+//! A function object that does nothing and can be used as an empty deleter for \c shared_ptr
+struct null_deleter
+{
+	//! Function object result type
+	typedef void result_type;
+	/*!
+	 * Does nothing
+	 */
+	template< typename T >
+		void operator() (T*) const noexcept {}
+};
+
+template <typename T>
+boost::shared_ptr<T> makeFakeShared(T & object) {
+	return boost::shared_ptr<T>(&object, null_deleter{});
+}
 
 std::vector<cv::Point2f> findPattern(cv::Mat const & image) {
 	std::vector<cv::Point2f> image_points;
@@ -24,6 +45,23 @@ std::vector<cv::Point2f> findPattern(cv::Mat const & image) {
 	cv::findCirclesGrid(image, pattern_size, image_points, cv::CALIB_CB_SYMMETRIC_GRID, blob_detector);
 	return image_points;
 }
+
+pcl::PointCloud<pcl::PointXYZ> generateEnsensoCalibrationPattern() {
+	pcl::PointCloud<pcl::PointXYZ> result;
+	double pattern_size(7);
+	double distance(0.01875);
+	double center((pattern_size-1) * distance);
+	for (size_t i=0; i<pattern_size; i++) {
+		for (size_t j=0; j<pattern_size; j++) {
+			double x(j*distance - center);
+			double y(i*distance - center);
+			double z(0);
+			result.push_back(pcl::PointXYZ(x,y,z));
+		}
+	}
+	return result;
+}
+
 
 } // namespace
 
@@ -45,26 +83,27 @@ int main(int argc, char * * argv) {
 	image_geometry::StereoCameraModel stereo_model;
 	stereo_model.fromCameraInfo(camera_info_left, camera_info_right);
 
-	int point_index(0);
-	cv::Point2d left_rectified  = stereo_model.left().rectifyPoint(left_points.at(point_index));
-	cv::Point2d right_rectified = stereo_model.right().rectifyPoint(right_points.at(point_index));
+	pcl::PointCloud<pcl::PointXYZ> measured_pattern;
+	for (size_t i=0; i<left_points.size(); i++) {
+		cv::Point2d left_rectified  = stereo_model.left().rectifyPoint(left_points.at(i));
+		cv::Point2d right_rectified = stereo_model.right().rectifyPoint(right_points.at(i));
 
-	double baseline(stereo_model.baseline());
-	std::cout << "baseline " << baseline << std::endl;
-	std::cout << "Get Z " << stereo_model.getZ(left_rectified.x-right_rectified.x) << std::endl;
-	// ToDO: Correct for CX_Left - CX_Right (See image geometry) -right_.Tx() / (disparity - (left().cx() - right().cx()));
-	float x,y,z;
-	dr::get3dCoordinates(
-		cv::Point2f(left_rectified.x, left_rectified.y),            // Coordinates of the point in the left image
-		cv::Point2f(right_rectified.x, right_rectified.y),          // Coordinates of the point in the right image
-		baseline,                                                   // Camera's baseline
-		cv::Point2f(camera_info_left.P[0], camera_info_left.P[5]),  // Camera's focal length
-		cv::Point2f(camera_info_left.P[2], camera_info_left.P[6]),  // Camera's image center
-		x,                                                          // Output point's X coordinate
-		y,                                                          // Output point's Y coordinate
-		z                                                           // Output point's Z coordinate
+		double depth(stereo_model.getZ(left_rectified.x-right_rectified.x));
+		cv::Point2f focal_length(camera_info_left.P[0], camera_info_left.P[5]);
+		cv::Point2f image_center(camera_info_left.P[2], camera_info_left.P[6]);
+
+		// ToDo: in dr_pcl 3dreconstruction Correct for CX_Left - CX_Right (See image geometry) -right_.Tx() / (disparity - (left().cx() - right().cx()));
+
+		float x, y, z;
+		dr::get3dCoordinates(left_rectified, depth, focal_length, image_center, x, y, z);
+		measured_pattern.push_back(pcl::PointXYZ(x, y, z));
+	}
+
+	pcl::PointCloud<pcl::PointXYZ> pattern = dr::generateEnsensoCalibrationPattern();
+
+	Eigen::Isometry3d isometry = dr::findIsometry(
+		dr::makeFakeShared(pattern),
+		dr::makeFakeShared(measured_pattern)
 	);
-
-	std::cout << "xyz: " << cv::Point3d(x,y,z) << std::endl;
-
+	std::cout << "Isometry: \n" << isometry.matrix() << std::endl;
 }
