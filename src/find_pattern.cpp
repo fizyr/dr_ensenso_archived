@@ -10,6 +10,7 @@
 #include <Eigen/Geometry>
 
 #include "ensenso.hpp"
+#include "eigen.hpp"
 #include "opencv.hpp"
 #include "util.hpp"
 
@@ -63,8 +64,8 @@ pcl::PointCloud<pcl::PointXYZ> generateEnsensoCalibrationPattern() {
 	double center((pattern_size-1) * distance);
 	for (size_t i=0; i<pattern_size; i++) {
 		for (size_t j=0; j<pattern_size; j++) {
-			double x(j*distance - center);
-			double y(i*distance - center);
+			double x(i*distance - center);
+			double y((-1)*(j*distance - center));
 			double z(0);
 			result.push_back(pcl::PointXYZ(x,y,z));
 		}
@@ -101,15 +102,17 @@ Eigen::Isometry3d getPatternPose(std::vector<cv::Point2f> const & left_points, s
 		cv::Point2d left_rectified  = stereo_model.left().rectifyPoint(left_points.at(i));
 		cv::Point2d right_rectified = stereo_model.right().rectifyPoint(right_points.at(i));
 
-		double depth(stereo_model.getZ(left_rectified.x-right_rectified.x));
-		cv::Point2f focal_length(camera_info_left.P[0], camera_info_left.P[5]);
-		cv::Point2f image_center(camera_info_left.P[2], camera_info_left.P[6]);
-
+		//double depth(stereo_model.getZ(left_rectified.x-right_rectified.x));
+		//cv::Point2f focal_length(camera_info_left.P[0], camera_info_left.P[5]);
+		//cv::Point2f image_center(camera_info_left.P[2], camera_info_left.P[6]);
 		// ToDo: in dr_pcl 3dreconstruction Correct for CX_Left - CX_Right (See image geometry) -right_.Tx() / (disparity - (left().cx() - right().cx()));
+		//float x, y, z;
+		//dr::get3dCoordinates(left_rectified, depth, focal_length, image_center, x, y, z);
 
-		float x, y, z;
-		dr::get3dCoordinates(left_rectified, depth, focal_length, image_center, x, y, z);
-		measured_pattern.push_back(pcl::PointXYZ(x, y, z));
+		cv::Point3d point;
+		stereo_model.projectDisparityTo3d(left_rectified, left_rectified.x-right_rectified.x, point);
+
+		measured_pattern.push_back(pcl::PointXYZ(point.x, point.y, point.z));
 	}
 
 	pcl::PointCloud<pcl::PointXYZ> pattern = dr::generateEnsensoCalibrationPattern();
@@ -119,6 +122,31 @@ Eigen::Isometry3d getPatternPose(std::vector<cv::Point2f> const & left_points, s
 		dr::makeFakeShared(measured_pattern)
 	);
 	return isometry;
+}
+
+void drawPattern(cv::Mat const & image, std::vector<cv::Point2f> const & points) {
+	cv::Mat draw;
+	image.copyTo(draw);
+	cv::drawChessboardCorners(draw, cv::Size(7,7), points, true);
+	cv::imshow("draw", draw);
+	cv::waitKey();
+}
+
+/// Set workspace calibration to the left camera origin
+void setWorkspaceToLeftCamera() {
+	NxLibCommand command(cmdCalibrateWorkspace);
+	executeNx(command);
+}
+
+// Get the pose of the ensenso calibration pattern
+Eigen::Isometry3d getPatternPose(Ensenso & ensenso) {
+	setWorkspaceToLeftCamera();
+	ensenso.recordCalibrationPattern();
+
+	NxLibCommand command(cmdEstimatePatternPose);
+	executeNx(command);
+	Eigen::Isometry3d pose = toEigenIsometry(command.result()[itmPatterns][0][itmPatternPose]);
+	return pose;
 }
 
 } // namespace
@@ -137,13 +165,24 @@ int main(int argc, char * * argv) {
 	ensenso.recordCalibrationPattern();
 	std::vector<cv::Point2f> left_points_ensenso, right_points_ensenso;
 	dr::getEnsensoPoints(left_points_ensenso, right_points_ensenso, 7);
+	dr::drawPattern(left_image, left_points_ensenso);
+	dr::drawPattern(right_image, right_points_ensenso);
 
+	// Get left and right points as processed by dr (opencv) blob detection
 	std::vector<cv::Point2f> left_points_dr  = dr::findPattern(left_image);
 	std::vector<cv::Point2f> right_points_dr = dr::findPattern(right_image);
 
-	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr);
-	std::cout << "DR Pattern pose: \n" << isometry_dr.matrix() << std::endl;
+	//std::cout << "left_points_dr\n" << left_points_dr << std::endl;
+	//std::cout << "right_points_dr\n" << right_points_dr << std::endl;
+	//std::cout << "left_points_ensenso\n" << left_points_ensenso << std::endl;
+	//std::cout << "right_points_ensenso\n" << right_points_ensenso << std::endl;
 
-	Eigen::Isometry3d isometry_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso);
-	std::cout << "Ensenso Pattern pose: \n" << isometry_ensenso.matrix() << std::endl;
+//	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr);
+//	std::cout << "DR Pattern pose: \n" << isometry_dr.matrix() << std::endl;
+
+	Eigen::Isometry3d isometry_dr_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso);
+	std::cout << "Ensenso Pattern pose with DR ray tracing: \n " << isometry_dr_ensenso.translation().matrix() << std::endl;
+
+	Eigen::Isometry3d isometry_ensenso = getPatternPose(ensenso);
+	std::cout << "Ensenso Pattern pose with Ensenso ray tracing: \n " << isometry_ensenso.translation().matrix() << std::endl;
 }
