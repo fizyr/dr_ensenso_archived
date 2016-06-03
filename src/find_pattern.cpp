@@ -125,6 +125,5 @@ int main(int argc, char * * argv) {
 		dr::makeFakeShared(pattern),
 		dr::makeFakeShared(measured_pattern)
 	);
-	std::cout << "Isometry: \n" << isometry.matrix() << std::endl;
-	std::cout << "Isometry inverse: \n" << isometry.matrix().inverse() << std::endl;
+	std::cout << "Pattern pose: \n" << isometry.matrix() << std::endl;
 }
