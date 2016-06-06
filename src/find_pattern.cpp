@@ -88,7 +88,12 @@ void getEnsensoPoints(std::vector<cv::Point2f> & left_points, std::vector<cv::Po
 	}
 }
 
-Eigen::Isometry3d getPatternPose(std::vector<cv::Point2f> const & left_points, std::vector<cv::Point2f> const & right_points) {
+Eigen::Isometry3d getPatternPose(
+		std::vector<cv::Point2f> const & left_points,
+		std::vector<cv::Point2f> const & right_points,
+		std::vector<cv::Point2d> & left_rectified,
+		std::vector<cv::Point2d> & right_rectified
+	) {
 	sensor_msgs::CameraInfo camera_info_left, camera_info_right;
 	std::string camera_name_left, camera_name_right;
 	camera_calibration_parsers::readCalibration(ros::package::getPath("dr_ensenso") + "/data/Left.yaml", camera_name_left, camera_info_left);
@@ -99,8 +104,8 @@ Eigen::Isometry3d getPatternPose(std::vector<cv::Point2f> const & left_points, s
 
 	pcl::PointCloud<pcl::PointXYZ> measured_pattern;
 	for (size_t i=0; i<left_points.size(); i++) {
-		cv::Point2d left_rectified  = stereo_model.left().rectifyPoint(left_points.at(i));
-		cv::Point2d right_rectified = stereo_model.right().rectifyPoint(right_points.at(i));
+		left_rectified.push_back(stereo_model.left().rectifyPoint(left_points.at(i)));
+		right_rectified.push_back(stereo_model.right().rectifyPoint(right_points.at(i)));
 
 		//double depth(stereo_model.getZ(left_rectified.x-right_rectified.x));
 		//cv::Point2f focal_length(camera_info_left.P[0], camera_info_left.P[5]);
@@ -110,7 +115,7 @@ Eigen::Isometry3d getPatternPose(std::vector<cv::Point2f> const & left_points, s
 		//dr::get3dCoordinates(left_rectified, depth, focal_length, image_center, x, y, z);
 
 		cv::Point3d point;
-		stereo_model.projectDisparityTo3d(left_rectified, left_rectified.x-right_rectified.x, point);
+		stereo_model.projectDisparityTo3d(left_rectified.front(), left_rectified.front().x-right_rectified.front().x, point);
 
 		measured_pattern.push_back(pcl::PointXYZ(point.x, point.y, point.z));
 	}
@@ -149,6 +154,37 @@ Eigen::Isometry3d getPatternPose(Ensenso & ensenso) {
 	return pose;
 }
 
+Eigen::Matrix<double, 4, 4> getReprojectionMatrix(NxLibItem const & item) {
+	Eigen::Matrix<double,4,4> reprojection_matrix;
+	for (size_t i=0; i<4; i++) {
+		for (size_t j=0; j<4; j++) {
+			reprojection_matrix(j,i) = item[i][j].asDouble();
+		}
+	}
+	return reprojection_matrix;
+}
+
+Eigen::Isometry3d getPatternPoseUsingReprojection(
+	Ensenso & ensenso,
+	std::vector<cv::Point2d> const & left_rectified_ensenso,
+	std::vector<cv::Point2d> const & right_rectified_ensenso
+) {
+	Eigen::Matrix4d Q = dr::getReprojectionMatrix(ensenso.native()[itmCalibration][itmStereo][itmReprojection]);
+
+	pcl::PointCloud<pcl::PointXYZ> measured_pattern;
+	for (size_t i=0; i<left_rectified_ensenso.size(); i++) {
+		Eigen::Vector4d vector(left_rectified_ensenso.at(i).x, left_rectified_ensenso.at(i).y, left_rectified_ensenso.at(i).x - right_rectified_ensenso.at(i).x, 1);
+		Eigen::Vector4d result(Q*vector);
+		measured_pattern.push_back( pcl::PointXYZ(result(0)/result(3), result(1)/result(3), result(2)/result(3) ) );
+	}
+
+	pcl::PointCloud<pcl::PointXYZ> pattern = generateEnsensoCalibrationPattern();
+	return dr::findIsometry(
+		dr::makeFakeShared(pattern),
+		dr::makeFakeShared(measured_pattern)
+	);
+}
+
 } // namespace
 
 int main(int argc, char * * argv) {
@@ -177,12 +213,20 @@ int main(int argc, char * * argv) {
 	//std::cout << "left_points_ensenso\n" << left_points_ensenso << std::endl;
 	//std::cout << "right_points_ensenso\n" << right_points_ensenso << std::endl;
 
-//	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr);
-//	std::cout << "DR Pattern pose: \n" << isometry_dr.matrix() << std::endl;
+	std::vector<cv::Point2d> left_rectified_dr;
+	std::vector<cv::Point2d> right_rectified_dr;
+	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr, left_rectified_dr, right_rectified_dr);
+	std::cout << "DR Pattern pose: \n" << isometry_dr.matrix() << std::endl;
 
-	Eigen::Isometry3d isometry_dr_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso);
+	std::vector<cv::Point2d> left_rectified_ensenso;
+	std::vector<cv::Point2d> right_rectified_ensenso;
+	Eigen::Isometry3d isometry_dr_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso, left_rectified_ensenso, right_rectified_ensenso);
 	std::cout << "Ensenso Pattern pose with DR ray tracing: \n " << isometry_dr_ensenso.translation().matrix() << std::endl;
 
 	Eigen::Isometry3d isometry_ensenso = getPatternPose(ensenso);
 	std::cout << "Ensenso Pattern pose with Ensenso ray tracing: \n " << isometry_ensenso.translation().matrix() << std::endl;
+
+	// Use reprojection matrix (4x4) from Ensenso directly to calculate point location with ensenso points
+	Eigen::Isometry3d pattern_pose_using_reprojection = dr::getPatternPoseUsingReprojection(ensenso, left_rectified_ensenso, right_rectified_ensenso);
+	std::cout << "Ensenso pattern pose using Q matrix:\n" << pattern_pose_using_reprojection.matrix() << std::endl;
 }
