@@ -61,7 +61,7 @@ pcl::PointCloud<pcl::PointXYZ> generateEnsensoCalibrationPattern() {
 	pcl::PointCloud<pcl::PointXYZ> result;
 	double pattern_size(7);
 	double distance(0.01875);
-	double center((pattern_size-1) * distance);
+	double center(0.5*(pattern_size-1) * distance);
 	for (size_t i=0; i<pattern_size; i++) {
 		for (size_t j=0; j<pattern_size; j++) {
 			double x(i*distance - center);
@@ -115,7 +115,7 @@ Eigen::Isometry3d getPatternPose(
 		//dr::get3dCoordinates(left_rectified, depth, focal_length, image_center, x, y, z);
 
 		cv::Point3d point;
-		stereo_model.projectDisparityTo3d(left_rectified.front(), left_rectified.front().x-right_rectified.front().x, point);
+		stereo_model.projectDisparityTo3d(left_rectified.back(), left_rectified.back().x-right_rectified.back().x, point);
 
 		measured_pattern.push_back(pcl::PointXYZ(point.x, point.y, point.z));
 	}
