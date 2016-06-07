@@ -27,7 +27,7 @@ public:
 	using CalibrationResult = std::tuple<Eigen::Isometry3d, Eigen::Isometry3d, int, double>;
 
 	/// Connect to an ensenso camera.
-	Ensenso(bool connect_overlay = true);
+	Ensenso(std::string serial = "", bool connect_overlay = true);
 
 	/// Destructor.
 	~Ensenso();
