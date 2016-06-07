@@ -190,7 +190,7 @@ namespace {
 }
 
 int main(int argc, char * * argv) {
-	std::cerr << "Usage: " << argv[0] << " <optional path to camera parameters> <optional path to overlay camera parameters>" << std::endl;
+	std::cerr << "Usage: " << argv[0] << " <timeout (ms)> <optional path to camera parameters> <optional path to overlay camera parameters>" << std::endl;
 	// Create and configure Ensenso
 	std::cerr << "Initializing camera. This may take some time.\n";
 
