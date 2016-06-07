@@ -92,7 +92,8 @@ Eigen::Isometry3d getPatternPose(
 		std::vector<cv::Point2f> const & left_points,
 		std::vector<cv::Point2f> const & right_points,
 		std::vector<cv::Point2f> & left_rectified,
-		std::vector<cv::Point2f> & right_rectified
+		std::vector<cv::Point2f> & right_rectified,
+		pcl::PointCloud<pcl::PointXYZ> & measured_pattern
 	) {
 	sensor_msgs::CameraInfo camera_info_left, camera_info_right;
 	std::string camera_name_left, camera_name_right;
@@ -102,7 +103,6 @@ Eigen::Isometry3d getPatternPose(
 	image_geometry::StereoCameraModel stereo_model;
 	stereo_model.fromCameraInfo(camera_info_left, camera_info_right);
 
-	pcl::PointCloud<pcl::PointXYZ> measured_pattern;
 	for (size_t i=0; i<left_points.size(); i++) {
 		left_rectified.push_back(stereo_model.left().rectifyPoint(left_points.at(i)));
 		right_rectified.push_back(stereo_model.right().rectifyPoint(right_points.at(i)));
@@ -206,6 +206,20 @@ void drawRectifiedPoints(
 	drawPattern(right_rect, right_rectified_ensenso);
 }
 
+/// Backproject from cloud of xyz points in world coordinates to u,v coordinates in rectified image using reprojection matrix Q
+std::vector<cv::Point2f> backProject(Eigen::Matrix4d const & Q, pcl::PointCloud<pcl::PointXYZ> const & cloud){
+	std::vector<cv::Point2f> rectified_image_points;
+	for (size_t i=0; i<cloud.size(); i++) {
+		Eigen::Vector4d point(cloud.at(i).x, cloud.at(i).y, cloud.at(i).z, 1);
+		Eigen::Vector4d result(Q.inverse() * point);
+		result = result / result(3);
+		// result(2) contains the disparity and result(3) is the homogeneous part.
+		cv::Point2f rect_image_point(result(0), result(1));
+		rectified_image_points.push_back(rect_image_point);
+	}
+	return rectified_image_points;
+}
+
 } // namespace
 
 int main(int argc, char * * argv) {
@@ -231,12 +245,14 @@ int main(int argc, char * * argv) {
 
 	std::vector<cv::Point2f> left_rectified_dr;
 	std::vector<cv::Point2f> right_rectified_dr;
-	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr, left_rectified_dr, right_rectified_dr);
+	pcl::PointCloud<pcl::PointXYZ> measured_pattern_dr;
+	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr, left_rectified_dr, right_rectified_dr, measured_pattern_dr);
 	std::cout << "DR Pattern pose with open source ray tracing: \n" << isometry_dr.matrix() << "\n" << std::endl;
 
 	std::vector<cv::Point2f> left_rectified_ensenso;
 	std::vector<cv::Point2f> right_rectified_ensenso;
-	Eigen::Isometry3d isometry_dr_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso, left_rectified_ensenso, right_rectified_ensenso);
+	pcl::PointCloud<pcl::PointXYZ> measured_pattern_ensenso;
+	Eigen::Isometry3d isometry_dr_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso, left_rectified_ensenso, right_rectified_ensenso, measured_pattern_ensenso);
 	std::cout << "Ensenso Pattern pose with open source ray tracing: \n " << isometry_dr_ensenso.matrix() << "\n" << std::endl;
 
 	// Draw undistorted rectified points on the rectified image
@@ -249,4 +265,11 @@ int main(int argc, char * * argv) {
 	// Use reprojection matrix (4x4) from Ensenso directly to calculate point location with ensenso points
 	Eigen::Isometry3d pattern_pose_using_reprojection = dr::getPatternPoseUsingReprojection(ensenso, left_rectified_ensenso, right_rectified_ensenso);
 	std::cout << "Ensenso pattern pose using Q matrix and ensenso image points:\n" << pattern_pose_using_reprojection.matrix() << "\n" << std::endl;
+
+//	// List the ensenso rectified left image points
+//	std::cout << "Left ensenso rectified image points (u, v)\n" << left_rectified_ensenso << std::endl;
+//	// To compare with backprojected points, calculated by pinv(Q)*xyz
+//	Eigen::Matrix4d Q = dr::getReprojectionMatrix(ensenso.native()[itmCalibration][itmStereo][itmReprojection]);
+//	std::vector<cv::Point2f> backprojected_points = dr::backProject(Q, measured_pattern_ensenso);
+//	std::cout << "Pattern location in the rectified left image using reprojection matrix (Q) and backprojection\n" << backprojected_points << std::endl;
 }
