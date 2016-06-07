@@ -8,14 +8,21 @@
 
 namespace dr {
 
-Ensenso::Ensenso(bool connect_overlay) {
+Ensenso::Ensenso(std::string serial, bool connect_overlay) {
 	// Initialize nxLib.
 	nxLibInitialize();
 
-	// Try to find a stereo camera.
-	boost::optional<NxLibItem> camera = openCameraByType(valStereo);
-	if (!camera) throw std::runtime_error("Please connect an Ensenso stereo camera to your computer.");
-	ensenso_camera = *camera;
+	if (serial == "") {
+		// Try to find a stereo camera.
+		boost::optional<NxLibItem> camera = openCameraByType(valStereo);
+		if (!camera) throw std::runtime_error("Please connect an Ensenso stereo camera to your computer.");
+		ensenso_camera = *camera;
+	} else {
+		// Open the requested camera.
+		boost::optional<NxLibItem> camera = openCameraBySerial(serial);
+		if (!camera) throw std::runtime_error("Could not find an Ensenso camera with serial " + serial);
+		ensenso_camera = *camera;
+	}
 
 	// Get the linked overlay camera.
 	if (connect_overlay) overlay_camera = openCameraByLink(serialNumber());
