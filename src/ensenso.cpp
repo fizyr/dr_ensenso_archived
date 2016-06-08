@@ -33,13 +33,13 @@ Ensenso::~Ensenso() {
 	nxLibFinalize();
 }
 
-void Ensenso::loadParameters(std::string const parameters_file) {
-	setNxJsonFromFile(ensenso_camera[itmParameters], parameters_file);
+bool Ensenso::loadParameters(std::string const parameters_file) {
+	return setNxJsonFromFile(ensenso_camera[itmParameters], parameters_file);
 }
 
-void Ensenso::loadOverlayParameters(std::string const parameters_file) {
+bool Ensenso::loadOverlayParameters(std::string const parameters_file) {
 	if (!overlay_camera) throw std::runtime_error("No overlay camera found. Can not load overlay parameters.");
-	setNxJsonFromFile(overlay_camera.get()[itmParameters], parameters_file);
+	return setNxJsonFromFile(overlay_camera.get()[itmParameters], parameters_file);
 }
 
 void Ensenso::loadOverlayParameterSet(std::string const parameters_file) {
