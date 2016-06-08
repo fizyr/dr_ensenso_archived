@@ -94,7 +94,7 @@ Eigen::Isometry3d getPatternPose(
 		std::vector<cv::Point2f> & left_rectified,
 		std::vector<cv::Point2f> & right_rectified,
 		pcl::PointCloud<pcl::PointXYZ> & measured_pattern
-	) {
+) {
 	sensor_msgs::CameraInfo camera_info_left, camera_info_right;
 	std::string camera_name_left, camera_name_right;
 	camera_calibration_parsers::readCalibration(ros::package::getPath("dr_ensenso") + "/data/Left.yaml", camera_name_left, camera_info_left);
@@ -119,6 +119,18 @@ Eigen::Isometry3d getPatternPose(
 
 		measured_pattern.push_back(pcl::PointXYZ(point.x, point.y, point.z));
 	}
+
+	// Compare raw, undistorted and rect image points
+	std::vector<cv::Point2f> left_points_undistorted;
+	std::vector<cv::Point2f> left_points_opencv;
+	cv::undistortPoints(left_points, left_points_undistorted, cv::Mat(stereo_model.left().intrinsicMatrix()), cv::Mat(stereo_model.left().distortionCoeffs()));
+	cv::undistortPoints(left_points, left_points_opencv, cv::Mat(stereo_model.left().intrinsicMatrix()), cv::Mat(stereo_model.left().distortionCoeffs()), cv::Mat(stereo_model.left().rotationMatrix()));
+	std::cout << "D:\n" << cv::Mat(stereo_model.left().distortionCoeffs()) << std::endl;
+	std::cout << "K:\n" << cv::Mat(stereo_model.left().intrinsicMatrix()) << std::endl;
+	std::cout << "Left points raw:\n" << left_points << std::endl;
+	std::cout << "Left points undistorted:\n" << left_points_undistorted << std::endl;
+	std::cout << "Left points undistorted and rectified (opencv):\n" << left_points_opencv << std::endl;
+	std::cout << "Left points undistorted and rectified (image geometry):\n" << left_rectified << std::endl;
 
 	pcl::PointCloud<pcl::PointXYZ> pattern = dr::generateEnsensoCalibrationPattern();
 
@@ -265,11 +277,4 @@ int main(int argc, char * * argv) {
 	// Use reprojection matrix (4x4) from Ensenso directly to calculate point location with ensenso points
 	Eigen::Isometry3d pattern_pose_using_reprojection = dr::getPatternPoseUsingReprojection(ensenso, left_rectified_ensenso, right_rectified_ensenso);
 	std::cout << "Ensenso pattern pose using Q matrix and ensenso image points:\n" << pattern_pose_using_reprojection.matrix() << "\n" << std::endl;
-
-//	// List the ensenso rectified left image points
-//	std::cout << "Left ensenso rectified image points (u, v)\n" << left_rectified_ensenso << std::endl;
-//	// To compare with backprojected points, calculated by pinv(Q)*xyz
-//	Eigen::Matrix4d Q = dr::getReprojectionMatrix(ensenso.native()[itmCalibration][itmStereo][itmReprojection]);
-//	std::vector<cv::Point2f> backprojected_points = dr::backProject(Q, measured_pattern_ensenso);
-//	std::cout << "Pattern location in the rectified left image using reprojection matrix (Q) and backprojection\n" << backprojected_points << std::endl;
 }
