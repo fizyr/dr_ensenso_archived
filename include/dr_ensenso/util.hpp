@@ -98,9 +98,10 @@ void setNxJson(NxLibItem const & item, std::string const & json, std::string con
 
 /// Set the value of an NxLibItem to a JSON tree from a file.
 /**
+ * \return False if the file was not good (ie. could not be opened or does not exist).
  * \throw NxError on failure.
  */
-void setNxJsonFromFile(NxLibItem const & item, std::string const & filename, std::string const & what = "");
+bool setNxJsonFromFile(NxLibItem const & item, std::string const & filename, std::string const & what = "");
 
 /// Get the value of an NxLibItem as a JSON tree.
 /**

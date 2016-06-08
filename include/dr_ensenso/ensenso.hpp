@@ -53,12 +53,12 @@ public:
 	}
 
 	/// Loads the camera parameters from a JSON file.
-	void loadParameters(std::string const parameters_file);
+	bool loadParameters(std::string const parameters_file);
 
-	/// Loads the overlay camera parameters from a JSON file.
-	void loadOverlayParameters(std::string const parameters_file);
+	/// Loads the overlay camera parameters from a JSON file. Returns false if file was not found.
+	bool loadOverlayParameters(std::string const parameters_file);
 
-	/// Loads the overlay camera uEye parameters from a INI file.
+	/// Loads the overlay camera uEye parameters from a INI file. Returns false if file was not found.
 	void loadOverlayParameterSet(std::string const parameters_file);
 
 	/// Trigger data acquisition on the camera.
