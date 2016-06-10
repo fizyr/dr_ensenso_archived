@@ -93,14 +93,14 @@ Eigen::Isometry3d getPatternPose(
 		std::vector<cv::Point2f> const & right_points,
 		std::vector<cv::Point2f> & left_rectified,
 		std::vector<cv::Point2f> & right_rectified,
-		pcl::PointCloud<pcl::PointXYZ> & measured_pattern
+		pcl::PointCloud<pcl::PointXYZ> & measured_pattern,
+		image_geometry::StereoCameraModel & stereo_model
 ) {
 	sensor_msgs::CameraInfo camera_info_left, camera_info_right;
 	std::string camera_name_left, camera_name_right;
 	camera_calibration_parsers::readCalibration(ros::package::getPath("dr_ensenso") + "/data/Left.yaml", camera_name_left, camera_info_left);
 	camera_calibration_parsers::readCalibration(ros::package::getPath("dr_ensenso") + "/data/Right.yaml", camera_name_right, camera_info_right);
 
-	image_geometry::StereoCameraModel stereo_model;
 	stereo_model.fromCameraInfo(camera_info_left, camera_info_right);
 
 	for (size_t i=0; i<left_points.size(); i++) {
@@ -120,18 +120,6 @@ Eigen::Isometry3d getPatternPose(
 		measured_pattern.push_back(pcl::PointXYZ(point.x, point.y, point.z));
 	}
 
-	// Compare raw, undistorted and rect image points
-	std::vector<cv::Point2f> left_points_undistorted;
-	std::vector<cv::Point2f> left_points_opencv;
-	cv::undistortPoints(left_points, left_points_undistorted, cv::Mat(stereo_model.left().intrinsicMatrix()), cv::Mat(stereo_model.left().distortionCoeffs()));
-	cv::undistortPoints(left_points, left_points_opencv, cv::Mat(stereo_model.left().intrinsicMatrix()), cv::Mat(stereo_model.left().distortionCoeffs()), cv::Mat(stereo_model.left().rotationMatrix()));
-	std::cout << "D:\n" << cv::Mat(stereo_model.left().distortionCoeffs()) << std::endl;
-	std::cout << "K:\n" << cv::Mat(stereo_model.left().intrinsicMatrix()) << std::endl;
-	std::cout << "Left points raw:\n" << left_points << std::endl;
-	std::cout << "Left points undistorted:\n" << left_points_undistorted << std::endl;
-	std::cout << "Left points undistorted and rectified (opencv):\n" << left_points_opencv << std::endl;
-	std::cout << "Left points undistorted and rectified (image geometry):\n" << left_rectified << std::endl;
-
 	pcl::PointCloud<pcl::PointXYZ> pattern = dr::generateEnsensoCalibrationPattern();
 
 	Eigen::Isometry3d isometry = dr::findIsometry(
@@ -139,6 +127,23 @@ Eigen::Isometry3d getPatternPose(
 		dr::makeFakeShared(measured_pattern)
 	);
 	return isometry;
+}
+
+pcl::PointCloud<pcl::PointXYZ> reconstructWithoutRectification(std::vector<cv::Point2f> const & left, std::vector<cv::Point2f> const & right) {
+	pcl::PointCloud<pcl::PointXYZ> cloud;
+
+	// ToDo: Reconstruct using ray tracing (solving for closest distance of two lines, possibly after extrinsic correction using rectification matrix
+	std::cout << "left_norm = " << left << ";" << std::endl;
+	std::cout << "right_norm = " << right << ";" << std::endl;
+
+	return cloud;
+}
+
+/// Get normalized, undistorted (but not rectified) image points
+std::vector<cv::Point2f> normalizeUndistort(cv::Mat const & intrinsic_matrix, cv::Mat const & distortion_coeffs, std::vector<cv::Point2f> raw_points) {
+	std::vector<cv::Point2f> result;
+	cv::undistortPoints(raw_points, result, intrinsic_matrix, distortion_coeffs);
+	return result;
 }
 
 void drawPattern(cv::Mat const & image, std::vector<cv::Point2f> const & points) {
@@ -232,6 +237,18 @@ std::vector<cv::Point2f> backProject(Eigen::Matrix4d const & Q, pcl::PointCloud<
 	return rectified_image_points;
 }
 
+Eigen::Isometry3d getPatternPoseUsingRaw(image_geometry::StereoCameraModel const & stereo_model, std::vector<cv::Point2f> const & raw_left, std::vector<cv::Point2f> const & raw_right) {
+	std::vector<cv::Point2f> left_norm = normalizeUndistort( cv::Mat(stereo_model.left().intrinsicMatrix()), cv::Mat(stereo_model.left().distortionCoeffs()), raw_left);
+	std::vector<cv::Point2f> right_norm = normalizeUndistort( cv::Mat(stereo_model.right().intrinsicMatrix()), cv::Mat(stereo_model.right().distortionCoeffs()), raw_right);
+	pcl::PointCloud<pcl::PointXYZ> measured_pattern = reconstructWithoutRectification(left_norm, right_norm);
+	pcl::PointCloud<pcl::PointXYZ> pattern = generateEnsensoCalibrationPattern();
+	return findIsometry(
+		dr::makeFakeShared(pattern),
+		dr::makeFakeShared(measured_pattern)
+	);
+}
+
+
 } // namespace
 
 int main(int argc, char * * argv) {
@@ -258,13 +275,14 @@ int main(int argc, char * * argv) {
 	std::vector<cv::Point2f> left_rectified_dr;
 	std::vector<cv::Point2f> right_rectified_dr;
 	pcl::PointCloud<pcl::PointXYZ> measured_pattern_dr;
-	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr, left_rectified_dr, right_rectified_dr, measured_pattern_dr);
+	image_geometry::StereoCameraModel stereo_model;
+	Eigen::Isometry3d isometry_dr = dr::getPatternPose(left_points_dr, right_points_dr, left_rectified_dr, right_rectified_dr, measured_pattern_dr, stereo_model);
 	std::cout << "DR Pattern pose with open source ray tracing: \n" << isometry_dr.matrix() << "\n" << std::endl;
 
 	std::vector<cv::Point2f> left_rectified_ensenso;
 	std::vector<cv::Point2f> right_rectified_ensenso;
 	pcl::PointCloud<pcl::PointXYZ> measured_pattern_ensenso;
-	Eigen::Isometry3d isometry_dr_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso, left_rectified_ensenso, right_rectified_ensenso, measured_pattern_ensenso);
+	Eigen::Isometry3d isometry_dr_ensenso = dr::getPatternPose(left_points_ensenso, right_points_ensenso, left_rectified_ensenso, right_rectified_ensenso, measured_pattern_ensenso, stereo_model);
 	std::cout << "Ensenso Pattern pose with open source ray tracing: \n " << isometry_dr_ensenso.matrix() << "\n" << std::endl;
 
 	// Draw undistorted rectified points on the rectified image
@@ -277,4 +295,8 @@ int main(int argc, char * * argv) {
 	// Use reprojection matrix (4x4) from Ensenso directly to calculate point location with ensenso points
 	Eigen::Isometry3d pattern_pose_using_reprojection = dr::getPatternPoseUsingReprojection(ensenso, left_rectified_ensenso, right_rectified_ensenso);
 	std::cout << "Ensenso pattern pose using Q matrix and ensenso image points:\n" << pattern_pose_using_reprojection.matrix() << "\n" << std::endl;
+
+	// Without using rectification, but ray tracing using raw image points
+	Eigen::Isometry3d pattern_pose_using_raw = dr::getPatternPoseUsingRaw(stereo_model, left_points_ensenso, right_points_ensenso);
+	std::cout << "Ensenso pattern pose using raw points, and ray tracing:\n" << pattern_pose_using_raw.matrix() << "\n" << std::endl;
 }
