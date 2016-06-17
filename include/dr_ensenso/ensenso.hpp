@@ -150,7 +150,10 @@ public:
 		std::string const & target = ""                                ///< Target frame to calibrate to. Default is "Hand" for camera in hand and "Workspace" for fixed camera.
 	);
 
-	/// Pose of the camera in workspace frame. If no workspace is set, returns an empty boost optional.
+	/// Get the frame the camera is calibrated to, if any.
+	boost::optional<std::string> getFrame();
+
+	/// Get the pose of the camera in the calibrated frame, if the camera is calibrated.
 	boost::optional<Eigen::Isometry3d> getCameraPose();
 
 	/// Clears the Workspace, if it exists.
@@ -172,7 +175,7 @@ public:
 	}
 
 	/// Sets the Workspace calibration link.
-	void setWorkspace(Eigen::Isometry3d workspace);
+	void setWorkspace(Eigen::Isometry3d const & workspace);
 
 	/// Stores the caliration on the EEPROM of the camera.
 	void storeCalibration();
