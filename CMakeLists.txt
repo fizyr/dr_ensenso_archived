@@ -6,7 +6,6 @@ find_package(catkin REQUIRED COMPONENTS
 	dr_base
 	dr_util
 	dr_camera
-	dr_pcl
 	pcl_ros
 	pcl_conversions
 	cmake_modules
