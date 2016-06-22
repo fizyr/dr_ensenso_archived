@@ -204,7 +204,7 @@ int main(int argc, char * * argv) {
 	if (argc > 1) dump_tool.timeout = std::atoi(argv[1]);
 	if (argc > 2) dump_tool.loadMainParameters(argv[2]);
 	if (argc > 3) dump_tool.loadOverlayParameters(argv[3]);
-	dump_tool.hardwareTriggered(true);
+	dump_tool.hardwareTriggered(false);
 	dump_tool.dumpParameters();
 
 	std::cerr << "Starting camera capture.\n";
