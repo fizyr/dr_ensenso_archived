@@ -68,7 +68,7 @@ protected:
 
 		try {
 			// create the camera
-			ensenso_camera = make_unique<dr::Ensenso>(serial);
+			ensenso_camera = dr::make_unique<dr::Ensenso>(serial);
 		} catch (dr::NxError const & e) {
 			throw std::runtime_error("Failed initializing camera. " + std::string(e.what()));
 		} catch (std::runtime_error const & e) {
