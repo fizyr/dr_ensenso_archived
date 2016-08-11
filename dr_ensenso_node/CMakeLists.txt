@@ -2,15 +2,17 @@ cmake_minimum_required(VERSION 2.8.3)
 project(dr_ensenso_node)
 
 find_package(catkin REQUIRED COMPONENTS
-	roscpp
+	cv_bridge
 	dr_base
-	dr_ros
-	dr_util
+	dr_eigen
 	dr_ensenso
 	dr_msgs
-	dr_eigen
+	dr_ros
+	dr_util
+	image_transport
 	pcl_conversions
 	pcl_ros
+	roscpp
 )
 
 catkin_package()
