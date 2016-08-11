@@ -1,4 +1,5 @@
 #include <dr_msgs/SendPose.h>
+#include <dr_msgs/SendPoseStamped.h>
 #include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetPatternPose.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
@@ -356,9 +357,9 @@ protected:
 		return true;
 	}
 
-	bool setWorkspace(dr_msgs::SendPose::Request & req, dr_msgs::SendPose::Response &) {
+	bool setWorkspace(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
 		try {
-			ensenso_camera->setWorkspace(dr::toEigen(req.data));
+			ensenso_camera->setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id);
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to set workspace. " << e.what());
 			return false;
