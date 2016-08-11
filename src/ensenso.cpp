@@ -279,7 +279,7 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 	executeNx(calibrate);
 
 	// return result (camera pose, pattern pose, iterations, reprojection error)
-	Eigen::Isometry3d camera_pose  = toEigenIsometry(ensenso_camera[itmLink]).inverse(); // "Link" is inversed
+	Eigen::Isometry3d camera_pose  = toEigenIsometry(ensenso_camera[itmLink]).inverse(); // "Link" is inverted
 	Eigen::Isometry3d pattern_pose = toEigenIsometry(calibrate.result()[itmPatternPose]);
 	camera_pose.translation()  *= 0.001;
 	pattern_pose.translation() *= 0.001;
@@ -292,44 +292,52 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 	};
 }
 
+boost::optional<std::string> Ensenso::getFrame() {
+	// Make sure the relevant nxLibItem exists and is non-empty, then return it.
+	NxLibItem item = ensenso_camera[itmLink][itmTarget];
+	if (!item.exists()) return boost::none;
+	std::string frame = getNx<std::string>(item);
+	if (frame.empty()) return boost::none;
+	return frame;
+}
+
 boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
-	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
-	if (target == "") {
-		return boost::none;
-	}
+	// Check if the camera is calibrated.
+	if (!getFrame()) return boost::none;
 
 	// convert from mm to m
-	Eigen::Isometry3d link = toEigenIsometry(ensenso_camera[itmLink]);
-	link.translation() *= 0.001;
+	Eigen::Isometry3d pose = toEigenIsometry(ensenso_camera[itmLink]);
+	pose.translation() *= 0.001;
 
-	return link;
+	return pose;
 }
 
 void Ensenso::clearWorkspace() {
-	// check for no target
-	std::string target = getNx<std::string>(ensenso_camera[itmLink][itmTarget]);
-	if (target == "") {
-		return;
-	}
+	// Check if the camera is calibrated.
+	if (!getFrame()) return;
 
 	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
 	NxLibCommand command(cmdCalibrateWorkspace);
 	setNx(command.parameters()[itmCameras][0], serialNumber());
+	setNx(command.parameters()[itmTarget], "");
 	executeNx(command);
 
 	// clear target name
+	// TODO: Can be removed after settings the target parameter above?
+	// TODO: Should test that.
 	setNx(ensenso_camera[itmLink][itmTarget], "");
 }
 
 
-void Ensenso::setWorkspace(Eigen::Isometry3d workspace) {
+void Ensenso::setWorkspace(Eigen::Isometry3d const & workspace) {
 	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
 	NxLibCommand command(cmdCalibrateWorkspace);
 	setNx(command.parameters()[itmCameras][0], serialNumber());
 
 	// scale to [mm]
-	workspace.translation() *= 1000;
-	setNx(command.parameters()[itmPatternPose], workspace);
+	Eigen::Isometry3d workspace_mm = workspace;
+	workspace_mm.translation() *= 1000;
+	setNx(command.parameters()[itmPatternPose], workspace_mm);
 	executeNx(command);
 }
 
