@@ -1,5 +1,5 @@
 #include <dr_msgs/SendPose.h>
-#include <dr_msgs/SendPoseStamped.h>
+#include <dr_ensenso_msgs/SetWorkspace.h>
 #include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetPatternPose.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
@@ -359,9 +359,14 @@ protected:
 		return true;
 	}
 
-	bool setWorkspace(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
+	bool setWorkspace(dr_ensenso_msgs::SetWorkspace::Request & req, dr_ensenso_msgs::SetWorkspace::Response &) {
 		try {
-			ensenso_camera->setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id);
+			Eigen::Isometry3d pattern_pose;
+			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
+				DR_ERROR("Failed to get pattern pose.");
+				return false;
+			}
+			ensenso_camera->setWorkspace(pattern_pose, dr::toEigen(req.data.pose), req.data.header.frame_id);
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to set workspace. " << e.what());
 			return false;
@@ -387,7 +392,7 @@ protected:
 				return false;
 			}
 
-			ensenso_camera->setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id);
+			ensenso_camera->setWorkspace(pattern_pose, dr::toEigen(req.data.pose), req.data.header.frame_id);
 
 			ensenso_camera->storeCalibration();
 		} catch (dr::NxError const & e) {
