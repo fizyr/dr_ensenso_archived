@@ -85,6 +85,7 @@ protected:
 		servers.initialize_calibration = advertiseService("initialize_calibration", &EnsensoNode::initializeCalibration, this);
 		servers.record_calibration     = advertiseService("record_calibration"    , &EnsensoNode::recordCalibration    , this);
 		servers.finalize_calibration   = advertiseService("finalize_calibration"  , &EnsensoNode::finalizeCalibration  , this);
+		servers.set_workspace          = advertiseService("set_workspace"         , &EnsensoNode::setWorkspace         , this);
 		servers.clear_workspace        = advertiseService("clear_workspace"       , &EnsensoNode::clearWorkspace       , this);
 
 		// activate publishers
@@ -355,6 +356,16 @@ protected:
 		return true;
 	}
 
+	bool setWorkspace(dr_msgs::SendPose::Request & req, dr_msgs::SendPose::Response &) {
+		try {
+			ensenso_camera->setWorkspace(dr::toEigen(req.data));
+		} catch (dr::NxError const & e) {
+			DR_ERROR("Failed to set workspace. " << e.what());
+			return false;
+		}
+		return true;
+	}
+
 	bool clearWorkspace(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		try {
 			ensenso_camera->clearWorkspace();
@@ -398,6 +409,9 @@ protected:
 
 		/// Service server for finalizing the calibration.
 		ros::ServiceServer finalize_calibration;
+
+		/// Service server for setting the camera pose setting of the Ensenso.
+		ros::ServiceServer set_workspace;
 
 		/// Service server for clearing the camera pose setting of the Ensenso.
 		ros::ServiceServer clear_workspace;
