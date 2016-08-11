@@ -1,8 +1,8 @@
-#include <dr_msgs/GetCameraData.h>
-#include <dr_msgs/EnsensoInitializeCalibration.h>
 #include <dr_msgs/SendPose.h>
-#include <dr_msgs/EnsensoFinalizeCalibration.h>
-#include <dr_msgs/GetPose.h>
+#include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
+#include <dr_ensenso_msgs/GetPatternPose.h>
+#include <dr_ensenso_msgs/GetCameraData.h>
+#include <dr_ensenso_msgs/EnsensoInitializeCalibration.h>
 
 #include <dr_ensenso/ensenso.hpp>
 #include <dr_ros/node.hpp>
@@ -188,7 +188,7 @@ protected:
 		cv::imwrite(camera_data_path + "/" + time_string + "_image.png", image);
 	}
 
-	bool getData(dr_msgs::GetCameraData::Request &, dr_msgs::GetCameraData::Response & res) {
+	bool getData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
 		// prepare message
 		cv_bridge::CvImage cv_image(res.point_cloud.header, sensor_msgs::image_encodings::BGR8, cv::Mat());
 
@@ -237,12 +237,12 @@ protected:
 		return true;
 	}
 
-	bool getPatternPose(dr_msgs::GetPose::Request &, dr_msgs::GetPose::Response & res) {
+	bool getPatternPose(dr_ensenso_msgs::GetPatternPose::Request & req, dr_ensenso_msgs::GetPatternPose::Response & res) {
 		try {
 			Eigen::Isometry3d pattern_pose;
 
-			if (!ensenso_camera->calibrate(1, pattern_pose)) {
-				DR_ERROR("Failed to calibrate.");
+			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
+				DR_ERROR("Failed to get pattern pose.");
 				return false;
 			}
 
@@ -255,7 +255,7 @@ protected:
 		return true;
 	}
 
-	bool initializeCalibration(dr_msgs::EnsensoInitializeCalibration::Request & req, dr_msgs::EnsensoInitializeCalibration::Response &) {
+	bool initializeCalibration(dr_ensenso_msgs::EnsensoInitializeCalibration::Request & req, dr_ensenso_msgs::EnsensoInitializeCalibration::Response &) {
 		try {
 			ensenso_camera->discardPatterns();
 			ensenso_camera->clearWorkspace();
@@ -318,7 +318,7 @@ protected:
 		return true;
 	}
 
-	bool finalizeCalibration(dr_msgs::EnsensoFinalizeCalibration::Request &, dr_msgs::EnsensoFinalizeCalibration::Response & res) {
+	bool finalizeCalibration(dr_ensenso_msgs::EnsensoFinalizeCalibration::Request &, dr_ensenso_msgs::EnsensoFinalizeCalibration::Response & res) {
 		// check for proper initialization
 		if (moving_frame == "" || static_frame == "") {
 			DR_ERROR("No calibration frame provided.");
