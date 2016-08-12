@@ -58,6 +58,7 @@ protected:
 		param<std::string>("camera_data_path", camera_data_path, "camera_data");
 		param<bool>("publish_cloud", publish_cloud, true);
 		param<bool>("dump_images", dump_images, true);
+		param<bool>("registered", registered, true);
 
 		// get Ensenso serial
 		serial = getParam<std::string>("serial", "");
@@ -157,12 +158,17 @@ protected:
 	PointCloud::Ptr getPointCloud() {
 		PointCloud::Ptr cloud(new PointCloud);
 		try {
-			ensenso_camera->loadRegisteredPointCloud(*cloud);
+			if (registered) {
+				ensenso_camera->loadRegisteredPointCloud(*cloud, cv::Rect(), false);
+			} else {
+				ensenso_camera->loadPointCloud(*cloud, cv::Rect(), false);
+			}
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to retrieve PointCloud. " << e.what());
 			return nullptr;
 		}
 		cloud->header.frame_id = camera_frame;
+
 		return cloud;
 	}
 
@@ -446,6 +452,9 @@ protected:
 
 	/// If true, dump recorded images.
 	bool dump_images;
+
+	/// If true, registers the point clouds.
+	bool registered;
 
 	// Guess of the camera pose relative to gripper (for moving camera) or relative to robot origin (for static camera).
 	boost::optional<Eigen::Isometry3d> camera_guess;
