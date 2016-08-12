@@ -217,6 +217,7 @@ protected:
 
 		// get the image
 		cv_bridge::CvImage cv_image(res.point_cloud.header, sensor_msgs::image_encodings::BGR8, getImage());
+		res.color = *cv_image.toImageMsg();
 
 		// read the point cloud
 		PointCloud::Ptr point_cloud = getPointCloud();
