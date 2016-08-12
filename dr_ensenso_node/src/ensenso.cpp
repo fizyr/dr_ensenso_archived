@@ -57,7 +57,7 @@ protected:
 		// load ROS parameters
 		param<std::string>("camera_frame", camera_frame, "camera_frame");
 		param<std::string>("camera_data_path", camera_data_path, "camera_data");
-		param<bool>("publish_images", publish_images, true);
+		param<bool>("publish_cloud", publish_cloud, true);
 		param<bool>("dump_images", dump_images, true);
 
 		// get Ensenso serial
@@ -213,7 +213,7 @@ protected:
 		}
 
 		// publish point cloud if requested
-		if (publish_images) {
+		if (publish_cloud) {
 			publishers.cloud.publish(point_cloud);
 		}
 
@@ -438,8 +438,8 @@ protected:
 	/// Serial id of the Ensenso camera.
 	std::string serial;
 
-	/// If true, publishes images with a frequency of 30Hz.
-	bool publish_images;
+	/// If true, publishes point cloud data when calling getData.
+	bool publish_cloud;
 
 	/// If true, dump recorded images.
 	bool dump_images;
