@@ -137,6 +137,8 @@ protected:
 		if (publish_images_rate > 0) {
 			publish_images_timer = createTimer(ros::Rate(publish_images_rate), &EnsensoNode::publishImage, this);
 		}
+
+		DR_SUCCESS("Ensenso opened successfully.");
 	}
 
 	void publishImage(ros::TimerEvent const &) {
