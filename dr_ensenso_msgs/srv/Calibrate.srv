@@ -1,3 +1,4 @@
 int32 samples                  # Number of samples to average poses
-geometry_msgs/PoseStamped data # Pattern pose
+geometry_msgs/Pose data        # Pattern pose
+string frame_id                # frame id
 ---

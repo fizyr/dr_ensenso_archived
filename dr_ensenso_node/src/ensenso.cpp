@@ -1,4 +1,5 @@
 #include <dr_msgs/SendPose.h>
+#include <dr_msgs/SendPoseStamped.h>
 #include <dr_ensenso_msgs/SetWorkspace.h>
 #include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetPatternPose.h>
@@ -87,8 +88,8 @@ protected:
 		servers.initialize_calibration = advertiseService("initialize_calibration", &EnsensoNode::initializeCalibration, this);
 		servers.record_calibration     = advertiseService("record_calibration"    , &EnsensoNode::recordCalibration    , this);
 		servers.finalize_calibration   = advertiseService("finalize_calibration"  , &EnsensoNode::finalizeCalibration  , this);
-		servers.set_workspace          = advertiseService("set_workspace"         , &EnsensoNode::setWorkspace         , this);
-		servers.clear_workspace        = advertiseService("clear_workspace"       , &EnsensoNode::clearWorkspace       , this);
+		servers.set_workspace          = advertiseService("set_workspace_calibration", &EnsensoNode::setWorkspaceCalibration, this);
+		servers.clear_workspace        = advertiseService("clear_workspace_calibration", &EnsensoNode::clearWorkspaceCalibration, this);
 		servers.calibrate              = advertiseService("calibrate"             , &EnsensoNode::calibrate            , this);
 
 		// activate publishers
@@ -359,14 +360,9 @@ protected:
 		return true;
 	}
 
-	bool setWorkspace(dr_ensenso_msgs::SetWorkspace::Request & req, dr_ensenso_msgs::SetWorkspace::Response &) {
+	bool setWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
 		try {
-			Eigen::Isometry3d pattern_pose;
-			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
-				DR_ERROR("Failed to get pattern pose.");
-				return false;
-			}
-			ensenso_camera->setWorkspace(pattern_pose, dr::toEigen(req.data.pose), req.data.header.frame_id);
+			ensenso_camera->setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id);
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to set workspace. " << e.what());
 			return false;
@@ -374,7 +370,7 @@ protected:
 		return true;
 	}
 
-	bool clearWorkspace(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+	bool clearWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		try {
 			ensenso_camera->clearWorkspace();
 		} catch (dr::NxError const & e) {
@@ -392,7 +388,7 @@ protected:
 				return false;
 			}
 
-			ensenso_camera->setWorkspace(pattern_pose, dr::toEigen(req.data.pose), req.data.header.frame_id);
+			ensenso_camera->setWorkspace(pattern_pose, req.frame_id, dr::toEigen(req.data));
 
 			ensenso_camera->storeCalibration();
 		} catch (dr::NxError const & e) {
