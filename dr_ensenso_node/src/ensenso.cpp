@@ -221,7 +221,7 @@ protected:
 		return true;
 	}
 
-	bool getData(dr_msgs::GetCameraData::Request &, dr_msgs::GetCameraData::Response & res) {
+	bool getData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
 		if (!capture(true, true)) return false;
 
 		// get the image
