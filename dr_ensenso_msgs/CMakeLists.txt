@@ -8,11 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
 	geometry_msgs
 )
 
-
-add_message_files(
-	DIRECTORY msg
-)
-
 add_service_files(
 	DIRECTORY srv
 )
