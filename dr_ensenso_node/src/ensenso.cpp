@@ -1,6 +1,5 @@
 #include <dr_msgs/SendPose.h>
 #include <dr_msgs/SendPoseStamped.h>
-#include <dr_ensenso_msgs/SetWorkspace.h>
 #include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetPatternPose.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
