@@ -242,6 +242,12 @@ protected:
 	}
 
 	bool getPatternPose(dr_ensenso_msgs::GetPatternPose::Request & req, dr_ensenso_msgs::GetPatternPose::Response & res) {
+
+		if (req.samples == 0) {
+			DR_ERROR("Unable to get pattern pose. Number of samples is set to 0.");
+			return false;
+		}
+
 		try {
 			Eigen::Isometry3d pattern_pose;
 
