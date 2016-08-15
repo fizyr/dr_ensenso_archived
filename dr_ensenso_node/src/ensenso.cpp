@@ -366,9 +366,23 @@ protected:
 		return true;
 	}
 
+	bool setWorkspace(Eigen::Isometry3d const & pattern_pose, std::string const & frame_id, Eigen::Isometry3d const & defined_pose) {
+		if (frame_id == "") {
+			DR_ERROR("Workspace frame id is empty");
+			return false;
+		}
+		ensenso_camera->clearWorkspace();
+		ensenso_camera->setWorkspace(pattern_pose, frame_id, defined_pose);
+		return true;
+	}
+
+
 	bool setWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
 		try {
-			ensenso_camera->setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id);
+			if (!setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id, Eigen::Isometry3d::Identity())) {
+				DR_ERROR("Failed to set work space");
+				return false;
+			}
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to set workspace. " << e.what());
 			return false;
@@ -394,8 +408,10 @@ protected:
 				return false;
 			}
 
-			ensenso_camera->setWorkspace(pattern_pose, req.frame_id, dr::toEigen(req.data));
-
+			if (!setWorkspace(pattern_pose, req.frame_id, dr::toEigen(req.workspace))) {
+				DR_ERROR("Failed to set workspace.");
+				return false;
+			}
 			ensenso_camera->storeCalibration();
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to calibrate camera pose. " << e.what());
