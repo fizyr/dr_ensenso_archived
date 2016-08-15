@@ -90,6 +90,7 @@ protected:
 		servers.set_workspace          = advertiseService("set_workspace_calibration", &EnsensoNode::setWorkspaceCalibration, this);
 		servers.clear_workspace        = advertiseService("clear_workspace_calibration", &EnsensoNode::clearWorkspaceCalibration, this);
 		servers.calibrate              = advertiseService("calibrate"             , &EnsensoNode::calibrate            , this);
+		servers.store_calibration      = advertiseService("store_calibration"     , &EnsensoNode::storeCalibration     , this);
 
 		// activate publishers
 		publishers.calibration = advertise<geometry_msgs::PoseStamped>("calibration", 1, true);
@@ -403,6 +404,16 @@ protected:
 		return true;
 	}
 
+	bool storeCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+		try {
+			ensenso_camera->storeCalibration();
+		} catch (dr::NxError const & e) {
+			DR_ERROR("Failed to store calibration. " << e.what());
+			return false;
+		}
+		return true;
+	}
+
 	void publishCalibration(ros::TimerEvent const & = {}) {
 		geometry_msgs::PoseStamped pose;
 		boost::optional<std::string> frame = ensenso_camera->getFrame();
@@ -445,6 +456,9 @@ protected:
 
 		/// Service server combining 'get_pattern_pose', 'set_workspace', and stores it to the ensenso.
 		ros::ServiceServer calibrate;
+
+		/// Service server for storing the calibration.
+		ros::ServiceServer store_calibration;
 	} servers;
 
 	/// Object for handling transportation of images.
