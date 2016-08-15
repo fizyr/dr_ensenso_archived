@@ -38,7 +38,6 @@ class EnsensoNode: public Node {
 public:
 	EnsensoNode() : image_transport(*this) {
 		configure();
-		activate();
 	}
 
 private:
@@ -59,13 +58,16 @@ protected:
 		// load ROS parameters
 		param<std::string>("camera_frame", camera_frame, "camera_frame");
 		param<std::string>("camera_data_path", camera_data_path, "camera_data");
-		param<bool>("publish_images", publish_images, true);
+		param<bool>("publish_cloud", publish_cloud, true);
 		param<bool>("dump_images", dump_images, true);
+		param<bool>("registered", registered, true);
 
 		// get Ensenso serial
 		serial = getParam<std::string>("serial", "");
 		if (serial != "") {
 			DR_INFO("Opening Ensenso with serial '" << serial << "'...");
+		} else {
+			DR_INFO("Opening first available Ensenso...");
 		}
 
 		try {
@@ -76,10 +78,7 @@ protected:
 		} catch (std::runtime_error const & e) {
 			throw std::runtime_error("Failed initializing camera. " + std::string(e.what()));
 		}
-	}
 
-	/// Activate ROS service servers and publishers
-	void activate() {
 		// activate service servers
 		servers.camera_data            = advertiseService("get_data"              , &EnsensoNode::getData              , this);
 		servers.dump_data              = advertiseService("dump_data"             , &EnsensoNode::dumpData             , this);
@@ -145,24 +144,21 @@ protected:
 		if (publish_images_rate > 0) {
 			publish_images_timer = createTimer(ros::Rate(publish_images_rate), &EnsensoNode::publishImage, this);
 		}
+
+		DR_SUCCESS("Ensenso opened successfully.");
 	}
 
 	void publishImage(ros::TimerEvent const &) {
+		// capture only image
+		capture(false, true);
+
 		// create a header
 		std_msgs::Header header;
 		header.frame_id = camera_frame;
 		header.stamp    = ros::Time::now();
 
 		// prepare message
-		cv_bridge::CvImage cv_image(header, sensor_msgs::image_encodings::BGR8, cv::Mat());
-
-		// read the image
-		try {
-			ensenso_camera->loadIntensity(cv_image.image);
-		} catch (dr::NxError const & e) {
-			DR_ERROR("Failed to retrieve image. " << e.what());
-			return;
-		}
+		cv_bridge::CvImage cv_image(header, sensor_msgs::image_encodings::BGR8, getImage());
 
 		// publish the image
 		publishers.image.publish(cv_image.toImageMsg());
@@ -171,13 +167,30 @@ protected:
 	PointCloud::Ptr getPointCloud() {
 		PointCloud::Ptr cloud(new PointCloud);
 		try {
-			ensenso_camera->loadRegisteredPointCloud(*cloud);
+			if (registered) {
+				ensenso_camera->loadRegisteredPointCloud(*cloud, cv::Rect(), false);
+			} else {
+				ensenso_camera->loadPointCloud(*cloud, cv::Rect(), false);
+			}
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to retrieve PointCloud. " << e.what());
 			return nullptr;
 		}
 		cloud->header.frame_id = camera_frame;
+
 		return cloud;
+	}
+
+	cv::Mat getImage() {
+		cv::Mat image;
+		try {
+			ensenso_camera->loadIntensity(image, false);
+		} catch (dr::NxError const & e) {
+			DR_ERROR("Failed to retrieve image. " << e.what());
+			return cv::Mat();
+		}
+
+		return image;
 	}
 
 	void dumpData(cv::Mat const & image, PointCloud::Ptr point_cloud) {
@@ -193,17 +206,26 @@ protected:
 		cv::imwrite(camera_data_path + "/" + time_string + "_image.png", image);
 	}
 
-	bool getData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
-		// prepare message
-		cv_bridge::CvImage cv_image(res.point_cloud.header, sensor_msgs::image_encodings::BGR8, cv::Mat());
-
-		// read the image
+	bool capture(bool stereo, bool overlay) {
+		// retrieve image data
 		try {
-			ensenso_camera->loadIntensity(cv_image.image);
+			if (!ensenso_camera->retrieve(true, 1500, stereo, overlay)) {
+				DR_ERROR("Failed to retrieve image data.");
+				return false;
+			}
 		} catch (dr::NxError const & e) {
-			DR_ERROR("Failed to retrieve image. " << e.what());
+			DR_ERROR("Failed to retrieve image data. " << e.what());
 			return false;
 		}
+
+		return true;
+	}
+
+	bool getData(dr_msgs::GetCameraData::Request &, dr_msgs::GetCameraData::Response & res) {
+		if (!capture(true, true)) return false;
+
+		// get the image
+		cv_bridge::CvImage cv_image(res.point_cloud.header, sensor_msgs::image_encodings::BGR8, getImage());
 		res.color = *cv_image.toImageMsg();
 
 		// read the point cloud
@@ -218,7 +240,7 @@ protected:
 		}
 
 		// publish point cloud if requested
-		if (publish_images) {
+		if (publish_cloud) {
 			publishers.cloud.publish(point_cloud);
 		}
 
@@ -226,18 +248,10 @@ protected:
 	}
 
 	bool dumpData(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
-		// get image
-		cv::Mat image;
-		try {
-			ensenso_camera->loadIntensity(image);
-		} catch (dr::NxError const & e) {
-			DR_ERROR("Failed to retrieve image. " << e.what());
-			return false;
-		}
-		cv::imwrite(getTimeString() + "_image.png", image);
+		if (!capture(true, true)) return false;
 
 		// dump the image and point cloud
-		dumpData(image, getPointCloud());
+		dumpData(getImage(), getPointCloud());
 
 		return true;
 	}
@@ -512,11 +526,14 @@ protected:
 	/// Serial id of the Ensenso camera.
 	std::string serial;
 
-	/// If true, publishes images with a frequency of 30Hz.
-	bool publish_images;
+	/// If true, publishes point cloud data when calling getData.
+	bool publish_cloud;
 
 	/// If true, dump recorded images.
 	bool dump_images;
+
+	/// If true, registers the point clouds.
+	bool registered;
 
 	// Guess of the camera pose relative to gripper (for moving camera) or relative to robot origin (for static camera).
 	boost::optional<Eigen::Isometry3d> camera_guess;
