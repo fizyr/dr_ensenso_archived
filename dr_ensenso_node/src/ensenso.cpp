@@ -64,6 +64,8 @@ protected:
 		serial = getParam<std::string>("serial", "");
 		if (serial != "") {
 			DR_INFO("Opening Ensenso with serial '" << serial << "'...");
+		} else {
+			DR_INFO("Opening first available Ensenso...");
 		}
 
 		try {
