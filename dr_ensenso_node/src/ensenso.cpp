@@ -59,6 +59,7 @@ protected:
 		param<bool>("publish_cloud", publish_cloud, true);
 		param<bool>("dump_images", dump_images, true);
 		param<bool>("registered", registered, true);
+		param<bool>("connect_overlay", connect_overlay, true);
 
 		// get Ensenso serial
 		serial = getParam<std::string>("serial", "");
@@ -70,7 +71,7 @@ protected:
 
 		try {
 			// create the camera
-			ensenso_camera = dr::make_unique<dr::Ensenso>(serial);
+			ensenso_camera = dr::make_unique<dr::Ensenso>(serial, connect_overlay);
 		} catch (dr::NxError const & e) {
 			throw std::runtime_error("Failed initializing camera. " + std::string(e.what()));
 		} catch (std::runtime_error const & e) {
@@ -140,6 +141,9 @@ protected:
 			publish_images_timer = createTimer(ros::Rate(publish_images_rate), &EnsensoNode::publishImage, this);
 		}
 
+		// check if there is an overlay camera connected
+		has_overlay = ensenso_camera->hasOverlay();
+
 		DR_SUCCESS("Ensenso opened successfully.");
 	}
 
@@ -153,7 +157,11 @@ protected:
 		header.stamp    = ros::Time::now();
 
 		// prepare message
-		cv_bridge::CvImage cv_image(header, sensor_msgs::image_encodings::BGR8, getImage());
+		cv_bridge::CvImage cv_image(
+			header,
+			has_overlay ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
+			getImage(!has_overlay)
+		);
 
 		// publish the image
 		publishers.image.publish(cv_image.toImageMsg());
@@ -176,13 +184,30 @@ protected:
 		return cloud;
 	}
 
-	cv::Mat getImage() {
+	cv::Mat getImage(bool capture) {
+		// get a grayscale image? then enable frontlight
+		int flex_view;
+		if (!has_overlay && capture) {
+			flex_view = ensenso_camera->flexView();
+			ensenso_camera->setProjector(false);
+			ensenso_camera->setFrontLight(true);
+		}
+
 		cv::Mat image;
 		try {
-			ensenso_camera->loadIntensity(image, false);
+			ensenso_camera->loadIntensity(image, capture);
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to retrieve image. " << e.what());
 			return cv::Mat();
+		}
+
+		// restore settings
+		if (!has_overlay && capture) {
+			ensenso_camera->setFrontLight(false);
+			ensenso_camera->setProjector(true);
+			if (flex_view > 0) {
+				ensenso_camera->setFlexView(flex_view);
+			}
 		}
 
 		return image;
@@ -204,7 +229,7 @@ protected:
 	bool capture(bool stereo, bool overlay) {
 		// retrieve image data
 		try {
-			if (!ensenso_camera->retrieve(true, 1500, stereo, overlay)) {
+			if (!ensenso_camera->retrieve(true, 3000, stereo, has_overlay && overlay)) {
 				DR_ERROR("Failed to retrieve image data.");
 				return false;
 			}
@@ -220,7 +245,11 @@ protected:
 		if (!capture(true, true)) return false;
 
 		// get the image
-		cv_bridge::CvImage cv_image(res.point_cloud.header, sensor_msgs::image_encodings::BGR8, getImage());
+		cv_bridge::CvImage cv_image(
+			res.point_cloud.header,
+			has_overlay ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
+			getImage(!has_overlay)
+		);
 		res.color = *cv_image.toImageMsg();
 
 		// read the point cloud
@@ -246,7 +275,7 @@ protected:
 		if (!capture(true, true)) return false;
 
 		// dump the image and point cloud
-		dumpData(getImage(), getPointCloud());
+		dumpData(getImage(!has_overlay), getPointCloud());
 
 		return true;
 	}
@@ -475,6 +504,12 @@ protected:
 
 	/// Location where the images and point clouds are stored.
 	std::string camera_data_path;
+
+	/// If true, the Ensenso has an overlay camera connected.
+	bool has_overlay;
+
+	/// If true, tries to connect an overlay camera.
+	bool connect_overlay;
 };
 
 }
