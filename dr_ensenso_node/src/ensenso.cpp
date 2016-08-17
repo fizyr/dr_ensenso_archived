@@ -148,6 +148,8 @@ protected:
 	}
 
 	void publishImage(ros::TimerEvent const &) {
+		if (publishers.image.getNumSubscribers() == 0) return;
+
 		// capture only image
 		capture(false, true);
 
