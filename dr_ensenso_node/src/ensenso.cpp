@@ -22,6 +22,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <boost/optional.hpp>
+
 #include <memory>
 
 namespace dr {
@@ -51,6 +53,11 @@ private:
 protected:
 	using Point = pcl::PointXYZ;
 	using PointCloud = pcl::PointCloud<Point>;
+
+	struct Data {
+		PointCloud::Ptr cloud;
+		cv::Mat image;
+	};
 
 	void configure() {
 		// load ROS parameters
@@ -215,7 +222,7 @@ protected:
 		return image;
 	}
 
-	void dumpData(cv::Mat const & image, PointCloud::Ptr point_cloud) {
+	void dumpData(PointCloud::Ptr point_cloud, cv::Mat const & image) {
 		// create path if it does not exist
 		boost::filesystem::path path(camera_data_path);
 		if (!boost::filesystem::is_directory(path)) {
@@ -243,42 +250,54 @@ protected:
 		return true;
 	}
 
+	boost::optional<Data> getData() {
+		cv::Mat image;
+
+		// when using an overlay, capture both simultaneously
+		if (has_overlay) {
+			if (!capture(true, true)) return boost::none;
+			image = getImage(false);
+
+		// when not using an overlay, capture image first
+		} else {
+			image = getImage(true);
+			if (!capture(true, false)) return boost::none;
+		}
+
+		return Data{getPointCloud(), image};
+	}
+
 	bool getData(dr_msgs::GetCameraData::Request &, dr_msgs::GetCameraData::Response & res) {
-		if (!capture(true, true)) return false;
+		boost::optional<Data> data = getData();
+		if (!data) return false;
+		pcl::toROSMsg(*data->cloud, res.point_cloud);
 
 		// get the image
 		cv_bridge::CvImage cv_image(
 			res.point_cloud.header,
 			has_overlay ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
-			getImage(!has_overlay)
+			data->image
 		);
 		res.color = *cv_image.toImageMsg();
 
-		// read the point cloud
-		PointCloud::Ptr point_cloud = getPointCloud();
-
-		// convert to ROS message
-		pcl::toROSMsg(*point_cloud, res.point_cloud);
-
 		// store image and point cloud
 		if (dump_images) {
-			dumpData(cv_image.image, point_cloud);
+			dumpData(data->cloud, data->image);
 		}
 
 		// publish point cloud if requested
 		if (publish_cloud) {
-			publishers.cloud.publish(point_cloud);
+			publishers.cloud.publish(data->cloud);
 		}
 
 		return true;
 	}
 
 	bool dumpData(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
-		if (!capture(true, true)) return false;
+		boost::optional<Data> data = getData();
+		if (!data) return false;
 
-		// dump the image and point cloud
-		dumpData(getImage(!has_overlay), getPointCloud());
-
+		dumpData(data->cloud, data->image);
 		return true;
 	}
 
