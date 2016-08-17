@@ -1,8 +1,10 @@
-#include <dr_msgs/GetCameraData.h>
-#include <dr_msgs/EnsensoInitializeCalibration.h>
 #include <dr_msgs/SendPose.h>
-#include <dr_msgs/EnsensoFinalizeCalibration.h>
-#include <dr_msgs/GetPose.h>
+#include <dr_msgs/SendPoseStamped.h>
+#include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
+#include <dr_ensenso_msgs/GetPatternPose.h>
+#include <dr_ensenso_msgs/GetCameraData.h>
+#include <dr_ensenso_msgs/EnsensoInitializeCalibration.h>
+#include <dr_ensenso_msgs/Calibrate.h>
 
 #include <dr_ensenso/ensenso.hpp>
 #include <dr_ros/node.hpp>
@@ -92,7 +94,10 @@ protected:
 		servers.initialize_calibration = advertiseService("initialize_calibration", &EnsensoNode::initializeCalibration, this);
 		servers.record_calibration     = advertiseService("record_calibration"    , &EnsensoNode::recordCalibration    , this);
 		servers.finalize_calibration   = advertiseService("finalize_calibration"  , &EnsensoNode::finalizeCalibration  , this);
-		servers.clear_workspace        = advertiseService("clear_workspace"       , &EnsensoNode::clearWorkspace       , this);
+		servers.set_workspace          = advertiseService("set_workspace_calibration", &EnsensoNode::setWorkspaceCalibration, this);
+		servers.clear_workspace        = advertiseService("clear_workspace_calibration", &EnsensoNode::clearWorkspaceCalibration, this);
+		servers.calibrate              = advertiseService("calibrate"             , &EnsensoNode::calibrate            , this);
+		servers.store_calibration      = advertiseService("store_calibration"     , &EnsensoNode::storeCalibration     , this);
 
 		// activate publishers
 		publishers.calibration = advertise<geometry_msgs::PoseStamped>("calibration", 1, true);
@@ -268,7 +273,7 @@ protected:
 		return Data{getPointCloud(), image};
 	}
 
-	bool getData(dr_msgs::GetCameraData::Request &, dr_msgs::GetCameraData::Response & res) {
+	bool getData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
 		boost::optional<Data> data = getData();
 		if (!data) return false;
 		pcl::toROSMsg(*data->cloud, res.point_cloud);
@@ -302,12 +307,18 @@ protected:
 		return true;
 	}
 
-	bool getPatternPose(dr_msgs::GetPose::Request &, dr_msgs::GetPose::Response & res) {
+	bool getPatternPose(dr_ensenso_msgs::GetPatternPose::Request & req, dr_ensenso_msgs::GetPatternPose::Response & res) {
+
+		if (req.samples == 0) {
+			DR_ERROR("Unable to get pattern pose. Number of samples is set to 0.");
+			return false;
+		}
+
 		try {
 			Eigen::Isometry3d pattern_pose;
 
-			if (!ensenso_camera->calibrate(1, pattern_pose)) {
-				DR_ERROR("Failed to calibrate.");
+			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
+				DR_ERROR("Failed to get pattern pose.");
 				return false;
 			}
 
@@ -320,7 +331,7 @@ protected:
 		return true;
 	}
 
-	bool initializeCalibration(dr_msgs::EnsensoInitializeCalibration::Request & req, dr_msgs::EnsensoInitializeCalibration::Response &) {
+	bool initializeCalibration(dr_ensenso_msgs::EnsensoInitializeCalibration::Request & req, dr_ensenso_msgs::EnsensoInitializeCalibration::Response &) {
 		try {
 			ensenso_camera->discardPatterns();
 			ensenso_camera->clearWorkspace();
@@ -383,7 +394,7 @@ protected:
 		return true;
 	}
 
-	bool finalizeCalibration(dr_msgs::EnsensoFinalizeCalibration::Request &, dr_msgs::EnsensoFinalizeCalibration::Response & res) {
+	bool finalizeCalibration(dr_ensenso_msgs::EnsensoFinalizeCalibration::Request &, dr_ensenso_msgs::EnsensoFinalizeCalibration::Response & res) {
 		// check for proper initialization
 		if (moving_frame == "" || static_frame == "") {
 			DR_ERROR("No calibration frame provided.");
@@ -420,11 +431,65 @@ protected:
 		return true;
 	}
 
-	bool clearWorkspace(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+	bool setWorkspace(Eigen::Isometry3d const & pattern_pose, std::string const & frame_id, Eigen::Isometry3d const & defined_pose) {
+		if (frame_id == "") {
+			DR_ERROR("Workspace frame id is empty");
+			return false;
+		}
+		ensenso_camera->clearWorkspace();
+		ensenso_camera->setWorkspace(pattern_pose, frame_id, defined_pose);
+		return true;
+	}
+
+
+	bool setWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
+		try {
+			if (!setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id, Eigen::Isometry3d::Identity())) {
+				DR_ERROR("Failed to set work space");
+				return false;
+			}
+		} catch (dr::NxError const & e) {
+			DR_ERROR("Failed to set workspace. " << e.what());
+			return false;
+		}
+		return true;
+	}
+
+	bool clearWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		try {
 			ensenso_camera->clearWorkspace();
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to clear camera pose. " << e.what());
+			return false;
+		}
+		return true;
+	}
+
+	bool calibrate(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
+		try {
+			Eigen::Isometry3d pattern_pose;
+			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
+				DR_ERROR("Failed to get pattern pose.");
+				return false;
+			}
+
+			if (!setWorkspace(pattern_pose, req.frame_id, dr::toEigen(req.workspace))) {
+				DR_ERROR("Failed to set workspace.");
+				return false;
+			}
+			ensenso_camera->storeCalibration();
+		} catch (dr::NxError const & e) {
+			DR_ERROR("Failed to calibrate camera pose. " << e.what());
+			return false;
+		}
+		return true;
+	}
+
+	bool storeCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+		try {
+			ensenso_camera->storeCalibration();
+		} catch (dr::NxError const & e) {
+			DR_ERROR("Failed to store calibration. " << e.what());
 			return false;
 		}
 		return true;
@@ -464,8 +529,17 @@ protected:
 		/// Service server for finalizing the calibration.
 		ros::ServiceServer finalize_calibration;
 
+		/// Service server for setting the camera pose setting of the Ensenso.
+		ros::ServiceServer set_workspace;
+
 		/// Service server for clearing the camera pose setting of the Ensenso.
 		ros::ServiceServer clear_workspace;
+
+		/// Service server combining 'get_pattern_pose', 'set_workspace', and stores it to the ensenso.
+		ros::ServiceServer calibrate;
+
+		/// Service server for storing the calibration.
+		ros::ServiceServer store_calibration;
 	} servers;
 
 	/// Object for handling transportation of images.
