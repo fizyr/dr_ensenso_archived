@@ -198,6 +198,7 @@ protected:
 		int flex_view;
 		if (!has_overlay && capture) {
 			flex_view = ensenso_camera->flexView();
+			ensenso_camera->setFlexView(0);
 			ensenso_camera->setProjector(false);
 			ensenso_camera->setFrontLight(true);
 		}
