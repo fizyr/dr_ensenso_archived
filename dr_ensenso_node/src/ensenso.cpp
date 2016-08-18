@@ -426,8 +426,6 @@ protected:
 		}
 
 		DR_INFO("Successfully finished calibration sequence.");
-
-		publishCalibration();
 		return true;
 	}
 
@@ -495,7 +493,7 @@ protected:
 		return true;
 	}
 
-	void publishCalibration(ros::TimerEvent const & = {}) {
+	void publishCalibration(ros::TimerEvent const &) {
 		geometry_msgs::PoseStamped pose;
 		boost::optional<std::string> frame = ensenso_camera->getFrame();
 		if (frame) {
