@@ -6,6 +6,7 @@
 #include <dr_ensenso_msgs/EnsensoInitializeCalibration.h>
 #include <dr_ensenso_msgs/Calibrate.h>
 
+#include <dr_thread/thread_pool.hpp>
 #include <dr_ensenso/ensenso.hpp>
 #include <dr_ros/node.hpp>
 #include <dr_util/timestamp.hpp>
@@ -38,7 +39,7 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 
 class EnsensoNode: public Node {
 public:
-	EnsensoNode() : image_transport(*this) {
+	EnsensoNode() : image_transport(*this), thread_pool(1) {
 		configure();
 	}
 
@@ -88,16 +89,16 @@ protected:
 		}
 
 		// activate service servers
-		servers.camera_data            = advertiseService("get_data"              , &EnsensoNode::getData              , this);
-		servers.dump_data              = advertiseService("dump_data"             , &EnsensoNode::dumpData             , this);
-		servers.get_pattern_pose       = advertiseService("get_pattern_pose"      , &EnsensoNode::getPatternPose       , this);
-		servers.initialize_calibration = advertiseService("initialize_calibration", &EnsensoNode::initializeCalibration, this);
-		servers.record_calibration     = advertiseService("record_calibration"    , &EnsensoNode::recordCalibration    , this);
-		servers.finalize_calibration   = advertiseService("finalize_calibration"  , &EnsensoNode::finalizeCalibration  , this);
-		servers.set_workspace          = advertiseService("set_workspace_calibration", &EnsensoNode::setWorkspaceCalibration, this);
-		servers.clear_workspace        = advertiseService("clear_workspace_calibration", &EnsensoNode::clearWorkspaceCalibration, this);
-		servers.calibrate              = advertiseService("calibrate"             , &EnsensoNode::calibrate            , this);
-		servers.store_calibration      = advertiseService("store_calibration"     , &EnsensoNode::storeCalibration     , this);
+		servers.camera_data            = advertiseService("get_data"                   , &EnsensoNode::onGetData                  , this);
+		servers.dump_data              = advertiseService("dump_data"                  , &EnsensoNode::onDumpData                 , this);
+		servers.get_pattern_pose       = advertiseService("get_pattern_pose"           , &EnsensoNode::onGetPatternPose           , this);
+		servers.initialize_calibration = advertiseService("initialize_calibration"     , &EnsensoNode::onInitializeCalibration    , this);
+		servers.record_calibration     = advertiseService("record_calibration"         , &EnsensoNode::onRecordCalibration        , this);
+		servers.finalize_calibration   = advertiseService("finalize_calibration"       , &EnsensoNode::onFinalizeCalibration      , this);
+		servers.set_workspace          = advertiseService("set_workspace_calibration"  , &EnsensoNode::onSetWorkspaceCalibration  , this);
+		servers.clear_workspace        = advertiseService("clear_workspace_calibration", &EnsensoNode::onClearWorkspaceCalibration, this);
+		servers.calibrate              = advertiseService("calibrate"                  , &EnsensoNode::onCalibrate                , this);
+		servers.store_calibration      = advertiseService("store_calibration"          , &EnsensoNode::onStoreCalibration         , this);
 
 		// activate publishers
 		publishers.calibration = advertise<geometry_msgs::PoseStamped>("calibration", 1, true);
@@ -228,7 +229,7 @@ protected:
 		return image;
 	}
 
-	void dumpData(PointCloud::Ptr point_cloud, cv::Mat const & image) {
+	void dumpData(PointCloud::ConstPtr point_cloud, cv::Mat const & image) {
 		// create path if it does not exist
 		boost::filesystem::path path(camera_data_path);
 		if (!boost::filesystem::is_directory(path)) {
@@ -273,7 +274,7 @@ protected:
 		return Data{getPointCloud(), image};
 	}
 
-	bool getData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
+	bool onGetData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
 		boost::optional<Data> data = getData();
 		if (!data) return false;
 		pcl::toROSMsg(*data->cloud, res.point_cloud);
@@ -288,7 +289,13 @@ protected:
 
 		// store image and point cloud
 		if (dump_images) {
-			dumpData(data->cloud, data->image);
+			// store point cloud and image in a separate thread
+			thread_pool.enqueue(
+				&EnsensoNode::dumpData,
+				this,
+				data->cloud,
+				data->image
+			);
 		}
 
 		// publish point cloud if requested
@@ -299,16 +306,21 @@ protected:
 		return true;
 	}
 
-	bool dumpData(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+	bool onDumpData(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		boost::optional<Data> data = getData();
 		if (!data) return false;
 
-		dumpData(data->cloud, data->image);
+			// store point cloud and image in a separate thread
+			thread_pool.enqueue(
+				&EnsensoNode::dumpData,
+				this,
+				data->cloud,
+				data->image
+			);
 		return true;
 	}
 
-	bool getPatternPose(dr_ensenso_msgs::GetPatternPose::Request & req, dr_ensenso_msgs::GetPatternPose::Response & res) {
-
+	bool onGetPatternPose(dr_ensenso_msgs::GetPatternPose::Request & req, dr_ensenso_msgs::GetPatternPose::Response & res) {
 		if (req.samples == 0) {
 			DR_ERROR("Unable to get pattern pose. Number of samples is set to 0.");
 			return false;
@@ -331,7 +343,7 @@ protected:
 		return true;
 	}
 
-	bool initializeCalibration(dr_ensenso_msgs::EnsensoInitializeCalibration::Request & req, dr_ensenso_msgs::EnsensoInitializeCalibration::Response &) {
+	bool onInitializeCalibration(dr_ensenso_msgs::EnsensoInitializeCalibration::Request & req, dr_ensenso_msgs::EnsensoInitializeCalibration::Response &) {
 		try {
 			ensenso_camera->discardPatterns();
 			ensenso_camera->clearWorkspace();
@@ -372,7 +384,7 @@ protected:
 		return true;
 	}
 
-	bool recordCalibration(dr_msgs::SendPose::Request & req, dr_msgs::SendPose::Response &) {
+	bool onRecordCalibration(dr_msgs::SendPose::Request & req, dr_msgs::SendPose::Response &) {
 		// check for proper initialization
 		if (moving_frame == "" || static_frame == "") {
 			DR_ERROR("No calibration frame provided.");
@@ -394,7 +406,7 @@ protected:
 		return true;
 	}
 
-	bool finalizeCalibration(dr_ensenso_msgs::EnsensoFinalizeCalibration::Request &, dr_ensenso_msgs::EnsensoFinalizeCalibration::Response & res) {
+	bool onFinalizeCalibration(dr_ensenso_msgs::EnsensoFinalizeCalibration::Request &, dr_ensenso_msgs::EnsensoFinalizeCalibration::Response & res) {
 		// check for proper initialization
 		if (moving_frame == "" || static_frame == "") {
 			DR_ERROR("No calibration frame provided.");
@@ -440,7 +452,7 @@ protected:
 	}
 
 
-	bool setWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
+	bool onSetWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
 		try {
 			if (!setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id, Eigen::Isometry3d::Identity())) {
 				DR_ERROR("Failed to set work space");
@@ -453,7 +465,7 @@ protected:
 		return true;
 	}
 
-	bool clearWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+	bool onClearWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		try {
 			ensenso_camera->clearWorkspace();
 		} catch (dr::NxError const & e) {
@@ -463,7 +475,7 @@ protected:
 		return true;
 	}
 
-	bool calibrate(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
+	bool onCalibrate(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
 		try {
 			Eigen::Isometry3d pattern_pose;
 			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
@@ -483,7 +495,7 @@ protected:
 		return true;
 	}
 
-	bool storeCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+	bool onStoreCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		try {
 			ensenso_camera->storeCalibration();
 		} catch (dr::NxError const & e) {
@@ -604,6 +616,9 @@ protected:
 
 	/// If true, tries to connect an overlay camera.
 	bool connect_overlay;
+
+	/// Thread pool for parallel work.
+	dr::ThreadPool thread_pool;
 };
 
 }

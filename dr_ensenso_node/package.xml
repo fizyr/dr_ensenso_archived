@@ -16,6 +16,7 @@
 	<depend>dr_ensenso_msgs</depend>
 	<depend>dr_msgs</depend>
 	<depend>dr_ros</depend>
+	<depend>dr_thread</depend>
 	<depend>dr_util</depend>
 	<depend>image_transport</depend>
 	<depend>pcl</depend>
