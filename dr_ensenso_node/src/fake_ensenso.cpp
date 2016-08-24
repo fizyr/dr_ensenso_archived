@@ -11,6 +11,8 @@
 #include <opencv2/opencv.hpp>
 #include <pcl/io/pcd_io.h>
 
+#include <boost/filesystem.hpp>
+
 namespace dr {
 
 class FakeCameraNode : public Node {
@@ -39,6 +41,9 @@ private:
 		// read image file path
 		std::string image_file = getParam<std::string>("image");
 		std::string point_cloud_file = getParam<std::string>("point_cloud");
+
+		if (!boost::filesystem::exists(image_file))       DR_ERROR("Failed to load image: File does not exist: " << image_file);
+		if (!boost::filesystem::exists(point_cloud_file)) DR_ERROR("Failed to load point cloud: File does not exist: " << point_cloud_file);
 
 		// load image
 		image = cv::imread(image_file);
