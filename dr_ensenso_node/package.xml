@@ -2,9 +2,11 @@
 <package format="2">
 	<name>dr_ensenso_node</name>
 	<version>0.0.0</version>
-	<description>The dr_ensenso_node package</description>
+	<description>ROS node for exposing Ensenso functionality over services and topics.</description>
 
 	<maintainer email="j.c.gaiser@delftrobotics.com">Hans Gaiser</maintainer>
+	<author email="j.c.gaiser@delftrobotics.com">Hans Gaiser</author>
+	<author email="maarten@de-vri.es">Maarten de Vries</author>
 
 	<license>all-rights-reserved</license>
 
