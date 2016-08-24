@@ -23,8 +23,10 @@ dr_include_directories(
 	${catkin_INCLUDE_DIRS}
 )
 
-add_executable(ensenso src/ensenso.cpp)
-target_link_libraries(ensenso ${catkin_LIBRARIES})
+add_executable(ensenso      src/ensenso.cpp)
+add_executable(fake_ensenso src/fake_ensenso.cpp)
+target_link_libraries(ensenso      ${catkin_LIBRARIES})
+target_link_libraries(fake_ensenso ${catkin_LIBRARIES})
 
 install(
 	TARGETS "ensenso"
