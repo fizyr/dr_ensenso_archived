@@ -2,7 +2,7 @@
 <package format="2">
   <name>dr_ensenso_msgs</name>
   <version>0.0.0</version>
-  <description>The ensenso_msgs package</description>
+  <description>Message and service definitions for the ROS interface of the Ensenso node.</description>
 
   <maintainer email="delftrobotics@todo.todo">delftrobotics</maintainer>
   <license>TODO</license>

@@ -8,8 +8,12 @@ find_package(catkin REQUIRED COMPONENTS
 	geometry_msgs
 )
 
-add_service_files(
-	DIRECTORY srv
+add_service_files(FILES
+	Calibrate.srv
+	FinalizeCalibration.srv
+	GetCameraData.srv
+	GetPatternPose.srv
+	InitializeCalibration.srv
 )
 
 generate_messages(
