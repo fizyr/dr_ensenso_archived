@@ -71,7 +71,7 @@ protected:
 		param<bool>("publish_cloud", publish_cloud, true);
 		param<bool>("dump_images", dump_images, true);
 		param<bool>("registered", registered, true);
-		param<bool>("connect_overlay", connect_overlay, true);
+		param<bool>("connect_monocular", connect_monocular, true);
 
 		// get Ensenso serial
 		serial = getParam<std::string>("serial", "");
@@ -83,7 +83,7 @@ protected:
 
 		try {
 			// create the camera
-			ensenso_camera = dr::make_unique<dr::Ensenso>(serial, connect_overlay);
+			ensenso_camera = dr::make_unique<dr::Ensenso>(serial, connect_monocular);
 		} catch (dr::NxError const & e) {
 			throw std::runtime_error("Failed initializing camera. " + std::string(e.what()));
 		} catch (std::runtime_error const & e) {
@@ -119,25 +119,25 @@ protected:
 			}
 		}
 
-		// load overlay parameters file
-		std::string overlay_param_file = getParam<std::string>("overlay_param_file", "");
-		if (overlay_param_file != "") {
+		// load monocular parameters file
+		std::string monocular_param_file = getParam<std::string>("monocular_param_file", "");
+		if (monocular_param_file != "") {
 			try {
-				if (!ensenso_camera->loadOverlayParameters(overlay_param_file)) {
-					DR_ERROR("Failed to set overlay camera params. File path: " << overlay_param_file);
+				if (!ensenso_camera->loadMonocularParameters(monocular_param_file)) {
+					DR_ERROR("Failed to set monocular camera params. File path: " << monocular_param_file);
 				}
 			} catch (dr::NxError const & e) {
-				DR_ERROR("Failed to set overlay camera params. " << e.what());
+				DR_ERROR("Failed to set monocular camera params. " << e.what());
 			}
 		}
 
-		// load overlay parameter set file
-		std::string overlay_param_set_file = getParam<std::string>("overlay_param_set_file", "");
-		if (overlay_param_set_file != "") {
+		// load monocular parameter set file
+		std::string monocular_ueye_param_file = getParam<std::string>("monocular_ueye_param_file", "");
+		if (monocular_ueye_param_file != "") {
 			try {
-				ensenso_camera->loadOverlayUeyeParameters(overlay_param_set_file);
+				ensenso_camera->loadMonocularUeyeParameters(monocular_ueye_param_file);
 			} catch (dr::NxError const & e) {
-				DR_ERROR("Failed to set overlay param set file. " << e.what());
+				DR_ERROR("Failed to set monocular param set file. " << e.what());
 			}
 		}
 
@@ -156,8 +156,8 @@ protected:
 			publish_images_timer = createTimer(ros::Rate(publish_images_rate), &EnsensoNode::publishImage, this);
 		}
 
-		// check if there is an overlay camera connected
-		has_overlay = ensenso_camera->hasOverlay();
+		// check if there is an monocular camera connected
+		has_monocular = ensenso_camera->hasMonocular();
 
 		DR_SUCCESS("Ensenso opened successfully.");
 	}
@@ -176,8 +176,8 @@ protected:
 		// prepare message
 		cv_bridge::CvImage cv_image(
 			header,
-			has_overlay ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
-			getImage(!has_overlay)
+			has_monocular ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
+			getImage(!has_monocular)
 		);
 
 		// publish the image
@@ -204,7 +204,7 @@ protected:
 	cv::Mat getImage(bool capture) {
 		// get a grayscale image? then enable frontlight
 		int flex_view;
-		if (!has_overlay && capture) {
+		if (!has_monocular && capture) {
 			flex_view = ensenso_camera->flexView();
 			ensenso_camera->setFlexView(0);
 			ensenso_camera->setProjector(false);
@@ -220,7 +220,7 @@ protected:
 		}
 
 		// restore settings
-		if (!has_overlay && capture) {
+		if (!has_monocular && capture) {
 			ensenso_camera->setFrontLight(false);
 			ensenso_camera->setProjector(true);
 			if (flex_view > 0) {
@@ -244,10 +244,10 @@ protected:
 		cv::imwrite(camera_data_path + "/" + time_string + "_image.png", image);
 	}
 
-	bool capture(bool stereo, bool overlay) {
+	bool capture(bool stereo, bool monocular) {
 		// retrieve image data
 		try {
-			if (!ensenso_camera->retrieve(true, 3000, stereo, has_overlay && overlay)) {
+			if (!ensenso_camera->retrieve(true, 3000, stereo, has_monocular && monocular)) {
 				DR_ERROR("Failed to retrieve image data.");
 				return false;
 			}
@@ -262,12 +262,12 @@ protected:
 	boost::optional<Data> getData() {
 		cv::Mat image;
 
-		// when using an overlay, capture both simultaneously
-		if (has_overlay) {
+		// when using an monocular, capture both simultaneously
+		if (has_monocular) {
 			if (!capture(true, true)) return boost::none;
 			image = getImage(false);
 
-		// when not using an overlay, capture image first
+		// when not using an monocular, capture image first
 		} else {
 			image = getImage(true);
 			if (!capture(true, false)) return boost::none;
@@ -284,7 +284,7 @@ protected:
 		// get the image
 		cv_bridge::CvImage cv_image(
 			res.point_cloud.header,
-			has_overlay ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
+			has_monocular ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
 			data->image
 		);
 		res.color = *cv_image.toImageMsg();
@@ -594,11 +594,11 @@ protected:
 	/// Location where the images and point clouds are stored.
 	std::string camera_data_path;
 
-	/// If true, the Ensenso has an overlay camera connected.
-	bool has_overlay;
+	/// If true, the Ensenso has an monocular camera connected.
+	bool has_monocular;
 
-	/// If true, tries to connect an overlay camera.
-	bool connect_overlay;
+	/// If true, tries to connect an monocular camera.
+	bool connect_monocular;
 
 	/// Thread pool for parallel work.
 	dr::ThreadPool thread_pool;
