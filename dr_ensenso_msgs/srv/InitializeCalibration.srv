@@ -1,0 +1,6 @@
+bool camera_moving               # If true, camera is in hand. If false, camera is fixed.
+string moving_frame              # The name of the moving frame to which the camera or pattern is attached.
+string fixed_frame               # The name of the fixed frame.
+geometry_msgs/Pose camera_guess  # Initial guess of the camera pose relative to the moving frame (camera in hand) or the fixed frame (camera fixed).
+geometry_msgs/Pose pattern_guess # Initial guess of the pattern pose relative to the moving frame (camera fixed) or the fixed frame (camera moveing).
+---

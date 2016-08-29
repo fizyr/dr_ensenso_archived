@@ -8,7 +8,7 @@
 
 namespace dr {
 
-Ensenso::Ensenso(std::string serial, bool connect_overlay) {
+Ensenso::Ensenso(std::string serial, bool connect_monocular) {
 	// Initialize nxLib.
 	nxLibInitialize();
 
@@ -24,8 +24,8 @@ Ensenso::Ensenso(std::string serial, bool connect_overlay) {
 		ensenso_camera = *camera;
 	}
 
-	// Get the linked overlay camera.
-	if (connect_overlay) overlay_camera = openCameraByLink(serialNumber());
+	// Get the linked monocular camera.
+	if (connect_monocular) monocular_camera = openCameraByLink(serialNumber());
 }
 
 Ensenso::~Ensenso() {
@@ -33,50 +33,79 @@ Ensenso::~Ensenso() {
 	nxLibFinalize();
 }
 
+std::string Ensenso::serialNumber() const {
+	return getNx<std::string>(ensenso_camera[itmSerialNumber]);
+}
+
+std::string Ensenso::monocularSerialNumber() const {
+	return monocular_camera ? getNx<std::string>(monocular_camera.get()[itmSerialNumber]) : "";
+}
+
 bool Ensenso::loadParameters(std::string const parameters_file) {
 	return setNxJsonFromFile(ensenso_camera[itmParameters], parameters_file);
 }
 
-bool Ensenso::loadOverlayParameters(std::string const parameters_file) {
-	if (!overlay_camera) throw std::runtime_error("No overlay camera found. Can not load overlay parameters.");
-	return setNxJsonFromFile(overlay_camera.get()[itmParameters], parameters_file);
+bool Ensenso::loadMonocularParameters(std::string const parameters_file) {
+	if (!monocular_camera) throw std::runtime_error("No monocular camera found. Can not load monocular camara parameters.");
+	return setNxJsonFromFile(monocular_camera.get()[itmParameters], parameters_file);
 }
 
-void Ensenso::loadOverlayParameterSet(std::string const parameters_file) {
-	if (!overlay_camera) throw std::runtime_error("No overlay camera found. Can not load overlay parameter set.");
+void Ensenso::loadMonocularUeyeParameters(std::string const parameters_file) {
+	if (!monocular_camera) throw std::runtime_error("No monocular camera found. Can not load monocular camera UEye parameters.");
 	NxLibCommand command(cmdLoadUEyeParameterSet);
 	setNx(command.parameters()[itmFilename], parameters_file);
 	executeNx(command);
 }
 
-bool Ensenso::trigger(bool stereo, bool overlay) const {
-	overlay = overlay && overlay_camera;
+int Ensenso::flexView() const {
+	try {
+		// in case FlexView = false, getting the int value gives an error
+		return getNx<int>(ensenso_camera[itmParameters][itmCapture][itmFlexView]);
+	} catch (NxError const & e) {
+		return -1;
+	}
+}
+
+void Ensenso::setFlexView(int value) {
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFlexView], value);
+}
+
+void Ensenso::setFrontLight(bool state) {
+	setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], state);
+}
+
+void Ensenso::setProjector(bool state) {
+	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], state);
+}
+
+bool Ensenso::trigger(bool stereo, bool monocular) const {
+	monocular = monocular && monocular_camera;
 
 	NxLibCommand command(cmdTrigger);
 	if (stereo) setNx(command.parameters()[itmCameras][0], serialNumber());
-	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera.get()[itmSerialNumber]));
+	if (monocular) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(monocular_camera.get()[itmSerialNumber]));
 	executeNx(command);
 
 	if (stereo && !getNx<bool>(command.result()[serialNumber()][itmTriggered])) return false;
-	if (overlay && !getNx<bool>(command.result()[overlaySerialNumber()][itmTriggered])) return false;
+	if (monocular && !getNx<bool>(command.result()[monocularSerialNumber()][itmTriggered])) return false;
 	return true;
 }
 
-bool Ensenso::retrieve(bool trigger, unsigned int timeout, bool stereo, bool overlay) const {
-	overlay = overlay && overlay_camera;
+bool Ensenso::retrieve(bool trigger, unsigned int timeout, bool stereo, bool monocular) const {
+	monocular = monocular && monocular_camera;
 
 	// nothing to do?
-	if (!stereo && !overlay)
+	if (!stereo && !monocular)
 		return true;
 
 	NxLibCommand command(trigger ? cmdCapture : cmdRetrieve);
 	setNx(command.parameters()[itmTimeout], int(timeout));
 	if (stereo) setNx(command.parameters()[itmCameras][0], serialNumber());
-	if (overlay) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(overlay_camera.get()[itmSerialNumber]));
+	if (monocular) setNx(command.parameters()[itmCameras][stereo ? 1 : 0], getNx<std::string>(monocular_camera.get()[itmSerialNumber]));
 	executeNx(command);
 
 	if (stereo && !getNx<bool>(command.result()[serialNumber()][itmRetrieved])) return false;
-	if (overlay && !getNx<bool>(command.result()[overlaySerialNumber()][itmRetrieved])) return false;
+	if (monocular && !getNx<bool>(command.result()[monocularSerialNumber()][itmRetrieved])) return false;
 	return true;
 }
 
@@ -86,43 +115,11 @@ void Ensenso::rectifyImages() {
 	executeNx(command);
 }
 
-bool Ensenso::getPatternPose(Eigen::Isometry3d & pose, int const samples)  {
-	discardPatterns();
-
-	for (int i = 0; i < samples; ++i) {
-		recordCalibrationPattern();
-	}
-
-	// disable FlexView (should not be necessary here, but appears to be necessary for cmdEstimatePatternPose)
-	int flex_view = flexView();
-	if (flex_view > 0) setFlexView(0);
-
-	// Get the pose of the pattern.
-	NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
-	executeNx(command_estimate_pose);
-
-	// restore FlexView setting
-	if (flex_view > 0) {
-		setFlexView(flex_view);
-	}
-
-	pose = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
-	pose.translation() *= 0.001;
-
-	// transform back for camera pose
-	boost::optional<Eigen::Isometry3d> camera_pose = getCameraPose();
-	if (camera_pose) {
-		pose = *camera_pose * pose;
-	}
-
-	return true;
-}
-
 cv::Size Ensenso::getIntensitySize() {
 	int width, height;
 
 	try {
-		overlay_camera.get()[itmImages][itmRaw].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
+		monocular_camera.get()[itmImages][itmRaw].getBinaryDataInfo(&width, &height, 0, 0, 0, 0);
 	} catch (NxLibException const & e) {
 		throw NxError(e);
 	}
@@ -137,11 +134,11 @@ cv::Size Ensenso::getPointCloudSize() {
 }
 
 void Ensenso::loadIntensity(cv::Mat & intensity, bool capture) {
-	if (capture) this->retrieve(true, 1500, !overlay_camera, !!overlay_camera);
+	if (capture) this->retrieve(true, 1500, !monocular_camera, !!monocular_camera);
 
 	// Copy to cv::Mat.
-	if (overlay_camera) {
-		intensity = toCvMat(overlay_camera.get()[itmImages][itmRaw]);
+	if (monocular_camera) {
+		intensity = toCvMat(monocular_camera.get()[itmImages][itmRaw]);
 	} else {
 		rectifyImages();
 		intensity = toCvMat(ensenso_camera[itmImages][itmRectified][itmLeft]);
@@ -191,7 +188,7 @@ void Ensenso::loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, c
 	{
 		NxLibCommand command(cmdRenderPointMap);
 		setNx(command.parameters()[itmNear], 1); // distance in millimeters to the camera (clip nothing?)
-		setNx(command.parameters()[itmCamera], overlaySerialNumber());
+		setNx(command.parameters()[itmCamera], monocularSerialNumber());
 		// gives weird (RenderPointMap) results with OpenGL enabled, so disable
 		setNx(root[itmParameters][itmRenderPointMap][itmUseOpenGL], false);
 		executeNx(command);
@@ -217,7 +214,7 @@ void Ensenso::setRegionOfInterest(cv::Rect const & roi) {
 	}
 }
 
-void Ensenso::discardPatterns() {
+void Ensenso::discardCalibrationPatterns() {
 	executeNx(NxLibCommand(cmdDiscardPatterns));
 }
 
@@ -246,6 +243,59 @@ void Ensenso::recordCalibrationPattern() {
 	if (flex_view > 0) {
 		setFlexView(flex_view);
 	}
+}
+
+Eigen::Isometry3d Ensenso::detectCalibrationPattern(int const samples, bool calibrated_frame)  {
+	discardCalibrationPatterns();
+
+	for (int i = 0; i < samples; ++i) {
+		recordCalibrationPattern();
+	}
+
+	// Disable FlexView (should not be necessary here, but appears to be necessary for cmdEstimatePatternPose)
+	int flex_view = flexView();
+	if (flex_view > 0) setFlexView(0);
+
+	// Get the pose of the pattern.
+	NxLibCommand command_estimate_pose(cmdEstimatePatternPose);
+	executeNx(command_estimate_pose);
+
+	// Restore FlexView setting.
+	if (flex_view > 0) {
+		setFlexView(flex_view);
+	}
+
+	Eigen::Isometry3d result = toEigenIsometry(command_estimate_pose.result()["Patterns"][0][itmPatternPose]);
+	result.translation() *= 0.001;
+
+	// Transform back to left stereo lens.
+	if (!calibrated_frame) {
+		boost::optional<Eigen::Isometry3d> camera_pose = getWorkspaceCalibration();
+		if (camera_pose) {
+			result = *camera_pose * result;
+		}
+	}
+
+	return result;
+}
+
+std::string Ensenso::getWorkspaceCalibrationFrame() {
+	// Make sure the relevant nxLibItem exists and is non-empty, then return it.
+	NxLibItem item = ensenso_camera[itmLink][itmTarget];
+	int error;
+	std::string result = item.asString(&error);
+	return error ? "" : result;
+}
+
+boost::optional<Eigen::Isometry3d> Ensenso::getWorkspaceCalibration() {
+	// Check if the camera is calibrated.
+	if (getWorkspaceCalibrationFrame().empty()) return boost::none;
+
+	// convert from mm to m
+	Eigen::Isometry3d pose = toEigenIsometry(ensenso_camera[itmLink]);
+	pose.translation() *= 0.001;
+
+	return pose;
 }
 
 Ensenso::CalibrationResult Ensenso::computeCalibration(
@@ -303,43 +353,7 @@ Ensenso::CalibrationResult Ensenso::computeCalibration(
 	};
 }
 
-boost::optional<std::string> Ensenso::getFrame() {
-	// Make sure the relevant nxLibItem exists and is non-empty, then return it.
-	NxLibItem item = ensenso_camera[itmLink][itmTarget];
-	if (!item.exists()) return boost::none;
-	std::string frame = getNx<std::string>(item);
-	if (frame.empty()) return boost::none;
-	return frame;
-}
-
-boost::optional<Eigen::Isometry3d> Ensenso::getCameraPose() {
-	// Check if the camera is calibrated.
-	if (!getFrame()) return boost::none;
-
-	// convert from mm to m
-	Eigen::Isometry3d pose = toEigenIsometry(ensenso_camera[itmLink]);
-	pose.translation() *= 0.001;
-
-	return pose;
-}
-
-void Ensenso::clearWorkspace() {
-	// Check if the camera is calibrated.
-	if (!getFrame()) return;
-
-	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
-	NxLibCommand command(cmdCalibrateWorkspace);
-	setNx(command.parameters()[itmCameras][0], serialNumber());
-	setNx(command.parameters()[itmTarget], "");
-	executeNx(command);
-
-	// clear target name
-	// TODO: Can be removed after settings the target parameter above?
-	// TODO: Should test that.
-	setNx(ensenso_camera[itmLink][itmTarget], "");
-}
-
-void Ensenso::setWorkspace(Eigen::Isometry3d const & workspace, std::string const & frame_id, Eigen::Isometry3d const & defined_pose) {
+void Ensenso::setWorkspaceCalibration(Eigen::Isometry3d const & workspace, std::string const & frame_id, Eigen::Isometry3d const & defined_pose, bool store) {
 	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
 	NxLibCommand command(cmdCalibrateWorkspace);
 	setNx(command.parameters()[itmCameras][0], serialNumber());
@@ -358,20 +372,32 @@ void Ensenso::setWorkspace(Eigen::Isometry3d const & workspace, std::string cons
 	setNx(command.parameters()[itmDefinedPose], defined_pose_mm);
 
 	executeNx(command);
+
+	if (store) storeWorkspaceCalibration();
 }
 
-void Ensenso::storeCalibration() {
+void Ensenso::clearWorkspaceCalibration(bool store) {
+	// Check if the camera is calibrated.
+	if (getWorkspaceCalibrationFrame().empty()) return;
+
+	// calling CalibrateWorkspace with no PatternPose and DefinedPose clears the workspace.
+	NxLibCommand command(cmdCalibrateWorkspace);
+	setNx(command.parameters()[itmCameras][0], serialNumber());
+	setNx(command.parameters()[itmTarget], "");
+	executeNx(command);
+
+	// clear target name
+	// TODO: Can be removed after settings the target parameter above?
+	// TODO: Should test that.
+	setNx(ensenso_camera[itmLink][itmTarget], "");
+
+	if (store) storeWorkspaceCalibration();
+}
+
+void Ensenso::storeWorkspaceCalibration() {
 	NxLibCommand command(cmdStoreCalibration);
 	setNx(command.parameters()[itmCameras][0], serialNumber());
 	executeNx(command);
-}
-
-void Ensenso::setFrontLight(bool state) {
-	setNx(ensenso_camera[itmParameters][itmCapture][itmFrontLight], state);
-}
-
-void Ensenso::setProjector(bool state) {
-	setNx(ensenso_camera[itmParameters][itmCapture][itmProjector], state);
 }
 
 }

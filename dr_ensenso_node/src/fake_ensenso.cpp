@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <dr_ensenso_msgs/Calibrate.h>
-#include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
-#include <dr_ensenso_msgs/EnsensoInitializeCalibration.h>
+#include <dr_ensenso_msgs/FinalizeCalibration.h>
+#include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
 #include <dr_ensenso_msgs/GetPatternPose.h>
 #include <dr_msgs/SendPose.h>
@@ -56,31 +56,31 @@ private:
 		ros::ServiceServer finalize_calibration;
 
 		/// Service server for setting the camera pose setting of the Ensenso.
-		ros::ServiceServer set_workspace;
+		ros::ServiceServer set_workspace_calibration;
 
 		/// Service server for clearing the camera pose setting of the Ensenso.
-		ros::ServiceServer clear_workspace;
+		ros::ServiceServer clear_workspace_calibration;
 
 		/// Service server combining 'get_pattern_pose', 'set_workspace', and stores it to the ensenso.
-		ros::ServiceServer calibrate;
+		ros::ServiceServer calibrate_workspace;
 
 		/// Service server for storing the calibration.
-		ros::ServiceServer store_calibration;
+		ros::ServiceServer store_workspace_calibration;
 	} servers;
 
 public:
 	FakeEnsensoNode() {
 		camera_frame    = getParam<std::string>("camera_frame");
-		servers.camera_data            = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                  , this);
-		servers.dump_data              = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                 , this);
-		servers.get_pattern_pose       = advertiseService("get_pattern_pose"           , &FakeEnsensoNode::onGetPatternPose           , this);
-		servers.initialize_calibration = advertiseService("initialize_calibration"     , &FakeEnsensoNode::onInitializeCalibration    , this);
-		servers.record_calibration     = advertiseService("record_calibration"         , &FakeEnsensoNode::onRecordCalibration        , this);
-		servers.finalize_calibration   = advertiseService("finalize_calibration"       , &FakeEnsensoNode::onFinalizeCalibration      , this);
-		servers.set_workspace          = advertiseService("set_workspace_calibration"  , &FakeEnsensoNode::onSetWorkspaceCalibration  , this);
-		servers.clear_workspace        = advertiseService("clear_workspace_calibration", &FakeEnsensoNode::onClearWorkspaceCalibration, this);
-		servers.calibrate              = advertiseService("calibrate"                  , &FakeEnsensoNode::onCalibrate                , this);
-		servers.store_calibration      = advertiseService("store_calibration"          , &FakeEnsensoNode::onStoreCalibration         , this);
+		servers.camera_data                 = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                  , this);
+		servers.dump_data                   = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                 , this);
+		servers.get_pattern_pose            = advertiseService("get_pattern_pose"           , &FakeEnsensoNode::onGetPatternPose           , this);
+		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &FakeEnsensoNode::onInitializeCalibration    , this);
+		servers.record_calibration          = advertiseService("record_calibration"         , &FakeEnsensoNode::onRecordCalibration        , this);
+		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &FakeEnsensoNode::onFinalizeCalibration      , this);
+		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"  , &FakeEnsensoNode::onSetWorkspaceCalibration  , this);
+		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration", &FakeEnsensoNode::onClearWorkspaceCalibration, this);
+		servers.calibrate_workspace         = advertiseService("calibrate_workspace"        , &FakeEnsensoNode::onCalibrateWorkspace       , this);
+		servers.store_workspace_calibration = advertiseService("store_workspace_calibration", &FakeEnsensoNode::onStoreWorkspaceCalibration, this);
 		DR_SUCCESS("Fake Ensenso node initialized.");
 	}
 
@@ -129,7 +129,7 @@ private:
 		return false;
 	}
 
-	bool onInitializeCalibration(dr_ensenso_msgs::EnsensoInitializeCalibration::Request &, dr_ensenso_msgs::EnsensoInitializeCalibration::Response &) {
+	bool onInitializeCalibration(dr_ensenso_msgs::InitializeCalibration::Request &, dr_ensenso_msgs::InitializeCalibration::Response &) {
 		DR_ERROR("The initialize_calibration service is not implemented in the fake ensenso node.");
 		return false;
 	}
@@ -139,7 +139,7 @@ private:
 		return false;
 	}
 
-	bool onFinalizeCalibration(dr_ensenso_msgs::EnsensoFinalizeCalibration::Request &, dr_ensenso_msgs::EnsensoFinalizeCalibration::Response &) {
+	bool onFinalizeCalibration(dr_ensenso_msgs::FinalizeCalibration::Request &, dr_ensenso_msgs::FinalizeCalibration::Response &) {
 		DR_ERROR("The finalize_calibration service is not implemented in the fake ensenso node.");
 		return false;
 	}
@@ -154,12 +154,12 @@ private:
 		return false;
 	}
 
-	bool onCalibrate(dr_ensenso_msgs::Calibrate::Request &, dr_ensenso_msgs::Calibrate::Response &) {
+	bool onCalibrateWorkspace(dr_ensenso_msgs::Calibrate::Request &, dr_ensenso_msgs::Calibrate::Response &) {
 		DR_ERROR("The calibrate service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
-	bool onStoreCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+	bool onStoreWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		DR_ERROR("The store_calibration service is not implemented in the fake ensenso node.");
 		return false;
 	}
@@ -169,7 +169,7 @@ private:
 }
 
 int main(int argc, char ** argv) {
-	ros::init(argc, argv, ROS_PACKAGE_NAME "_fake_camera");
+	ros::init(argc, argv, "ensenso");
 	dr::FakeEnsensoNode node;
 	ros::spin();
 }

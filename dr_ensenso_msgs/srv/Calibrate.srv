@@ -1,4 +1,4 @@
-int32 samples                  # Number of samples to average poses
-geometry_msgs/Pose workspace   # Workspace
-string frame_id                # frame id
+int32 samples                  # Number of samples to record for computing the calibration.
+geometry_msgs/Pose pattern     # Pose of the pattern with respect to the calibration frame.
+string frame_id                # Name of the calibration frame to store on the camera.
 ---
