@@ -490,9 +490,9 @@ protected:
 
 	void publishCalibration(ros::TimerEvent const &) {
 		geometry_msgs::PoseStamped pose;
-		boost::optional<std::string> frame = ensenso_camera->getCalibrationFrame();
-		if (frame) {
-			pose = dr::toRosPoseStamped(ensenso_camera->getWorkspaceCalibration()->inverse(), *frame, ros::Time::now());
+		std::string frame = ensenso_camera->getWorkspaceCalibrationFrame();
+		if (!frame.empty()) {
+			pose = dr::toRosPoseStamped(ensenso_camera->getWorkspaceCalibration()->inverse(), frame, ros::Time::now());
 		} else {
 			pose = dr::toRosPoseStamped(Eigen::Isometry3d::Identity(), "", ros::Time::now());
 		}
