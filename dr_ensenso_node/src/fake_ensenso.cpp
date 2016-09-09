@@ -10,6 +10,7 @@
 #include <dr_param/param.hpp>
 #include <dr_ros/node.hpp>
 
+#include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/image_encodings.h>
@@ -35,6 +36,15 @@ private:
 
 	/// Name for the camera frame.
 	std::string camera_frame;
+
+	/// If true, publishes point cloud data when calling getData.
+	bool publish_cloud = true;
+
+	/// If true, publishes point cloud data when calling getData.
+	bool publish_image = true;
+
+	/// Object for transporting images.
+	image_transport::ImageTransport image_transport;
 
 	struct {
 		/// Service server for supplying point clouds and images.
@@ -68,9 +78,20 @@ private:
 		ros::ServiceServer store_calibration;
 	} servers;
 
+	struct {
+		ros::Publisher cloud;
+		image_transport::Publisher image;
+	} publishers;
+
 public:
-	FakeEnsensoNode() {
-		camera_frame    = getParam<std::string>("camera_frame");
+	FakeEnsensoNode() : image_transport(*this) {
+		camera_frame                   = getParam<std::string>("camera_frame");
+		publish_cloud                  = getParam<bool>("publish_cloud", publish_cloud, true);
+		publish_image                  = getParam<bool>("publish_image", publish_image, true);
+
+		publishers.cloud               = advertise<sensor_msgs::PointCloud2>("cloud", 1, true);
+		publishers.image               = image_transport.advertise("rgb_image", 1, true);
+
 		servers.camera_data            = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                  , this);
 		servers.dump_data              = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                 , this);
 		servers.get_pattern_pose       = advertiseService("get_pattern_pose"           , &FakeEnsensoNode::onGetPatternPose           , this);
@@ -86,6 +107,8 @@ public:
 
 private:
 	bool onGetData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
+		DR_INFO("Received data request.");
+
 		// read image file path
 		std::string image_file = getParam<std::string>("image");
 		std::string point_cloud_file = getParam<std::string>("point_cloud");
@@ -116,6 +139,23 @@ private:
 		// copy the point cloud
 		pcl::toROSMsg(point_cloud, res.point_cloud);
 		res.point_cloud.header = header;
+
+		// publish point cloud if requested
+		if (publish_cloud) {
+			DR_SUCCESS("Publishing cloud");
+			publishers.cloud.publish(res.point_cloud);
+		}
+
+		// publish image if requested
+		if (publish_image) {
+			DR_SUCCESS("Publishing image");
+			std_msgs::Header header;
+			header.frame_id = camera_frame;
+			header.stamp = ros::Time::now();
+			cv_bridge::CvImage cv_image(header, sensor_msgs::image_encodings::BGR8, image);
+			publishers.image.publish(cv_image.toImageMsg());
+		}
+
 		return true;
 	}
 
