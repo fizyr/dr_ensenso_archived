@@ -1,25 +1,28 @@
+#include "timestamp.hpp"
+
+#include <dr_eigen/ros.hpp>
+#include <dr_ensenso/ensenso.hpp>
+#include <dr_ensenso/util.hpp>
+#include <dr_ros/node.hpp>
+#include <dr_thread/thread_pool.hpp>
+
+#include <dr_ensenso_msgs/Calibrate.h>
+#include <dr_ensenso_msgs/FinalizeCalibration.h>
+#include <dr_ensenso_msgs/GetCameraData.h>
+#include <dr_ensenso_msgs/GetPatternPose.h>
+#include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_msgs/SendPose.h>
 #include <dr_msgs/SendPoseStamped.h>
-#include <dr_ensenso_msgs/EnsensoFinalizeCalibration.h>
-#include <dr_ensenso_msgs/GetPatternPose.h>
-#include <dr_ensenso_msgs/GetCameraData.h>
-#include <dr_ensenso_msgs/EnsensoInitializeCalibration.h>
-#include <dr_ensenso_msgs/Calibrate.h>
 
-#include <dr_thread/thread_pool.hpp>
-#include <dr_ensenso/ensenso.hpp>
-#include <dr_ros/node.hpp>
-#include <dr_util/timestamp.hpp>
-#include <dr_eigen/ros.hpp>
-
-#include <ros/ros.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_conversions/pcl_conversions.h>
 #include <cv_bridge/cv_bridge.h>
-#include <std_srvs/Empty.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
+#include <ros/ros.h>
+
+#include <geometry_msgs/PoseStamped.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
-#include <geometry_msgs/PoseStamped.h>
+#include <std_srvs/Empty.h>
 
 #include <opencv2/opencv.hpp>
 #include <pcl/point_cloud.h>
@@ -47,7 +50,7 @@ private:
 	/// Resets calibration state from this node.
 	void resetCalibration() {
 		moving_frame  = "";
-		static_frame  = "";
+		fixed_frame   = "";
 		camera_guess  = boost::none;
 		pattern_guess = boost::none;
 		robot_poses.clear();
@@ -69,7 +72,7 @@ protected:
 		param<bool>("publish_cloud", publish_cloud, true);
 		param<bool>("dump_images", dump_images, true);
 		param<bool>("registered", registered, true);
-		param<bool>("connect_overlay", connect_overlay, true);
+		param<bool>("connect_monocular", connect_monocular, true);
 
 		// get Ensenso serial
 		serial = getParam<std::string>("serial", "");
@@ -81,7 +84,7 @@ protected:
 
 		try {
 			// create the camera
-			ensenso_camera = dr::make_unique<dr::Ensenso>(serial, connect_overlay);
+			ensenso_camera = dr::make_unique<dr::Ensenso>(serial, connect_monocular);
 		} catch (dr::NxError const & e) {
 			throw std::runtime_error("Failed initializing camera. " + std::string(e.what()));
 		} catch (std::runtime_error const & e) {
@@ -89,16 +92,16 @@ protected:
 		}
 
 		// activate service servers
-		servers.camera_data            = advertiseService("get_data"                   , &EnsensoNode::onGetData                  , this);
-		servers.dump_data              = advertiseService("dump_data"                  , &EnsensoNode::onDumpData                 , this);
-		servers.get_pattern_pose       = advertiseService("get_pattern_pose"           , &EnsensoNode::onGetPatternPose           , this);
-		servers.initialize_calibration = advertiseService("initialize_calibration"     , &EnsensoNode::onInitializeCalibration    , this);
-		servers.record_calibration     = advertiseService("record_calibration"         , &EnsensoNode::onRecordCalibration        , this);
-		servers.finalize_calibration   = advertiseService("finalize_calibration"       , &EnsensoNode::onFinalizeCalibration      , this);
-		servers.set_workspace          = advertiseService("set_workspace_calibration"  , &EnsensoNode::onSetWorkspaceCalibration  , this);
-		servers.clear_workspace        = advertiseService("clear_workspace_calibration", &EnsensoNode::onClearWorkspaceCalibration, this);
-		servers.calibrate              = advertiseService("calibrate"                  , &EnsensoNode::onCalibrate                , this);
-		servers.store_calibration      = advertiseService("store_calibration"          , &EnsensoNode::onStoreCalibration         , this);
+		servers.camera_data                 = advertiseService("get_data"                   , &EnsensoNode::onGetData                  , this);
+		servers.dump_data                   = advertiseService("dump_data"                  , &EnsensoNode::onDumpData                 , this);
+		servers.get_pattern_pose            = advertiseService("get_pattern_pose"           , &EnsensoNode::onGetPatternPose           , this);
+		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &EnsensoNode::onInitializeCalibration    , this);
+		servers.record_calibration          = advertiseService("record_calibration"         , &EnsensoNode::onRecordCalibration        , this);
+		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &EnsensoNode::onFinalizeCalibration      , this);
+		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"  , &EnsensoNode::onSetWorkspaceCalibration  , this);
+		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration", &EnsensoNode::onClearWorkspaceCalibration, this);
+		servers.calibrate_workspace         = advertiseService("calibrate_workspace"        , &EnsensoNode::onCalibrateWorkspace       , this);
+		servers.store_workspace_calibration = advertiseService("store_workspace_calibration", &EnsensoNode::onStoreWorkspaceCalibration, this);
 
 		// activate publishers
 		publishers.calibration = advertise<geometry_msgs::PoseStamped>("calibration", 1, true);
@@ -117,25 +120,25 @@ protected:
 			}
 		}
 
-		// load overlay parameters file
-		std::string overlay_param_file = getParam<std::string>("overlay_param_file", "");
-		if (overlay_param_file != "") {
+		// load monocular parameters file
+		std::string monocular_param_file = getParam<std::string>("monocular_param_file", "");
+		if (monocular_param_file != "") {
 			try {
-				if (!ensenso_camera->loadOverlayParameters(overlay_param_file)) {
-					DR_ERROR("Failed to set overlay camera params. File path: " << overlay_param_file);
+				if (!ensenso_camera->loadMonocularParameters(monocular_param_file)) {
+					DR_ERROR("Failed to set monocular camera params. File path: " << monocular_param_file);
 				}
 			} catch (dr::NxError const & e) {
-				DR_ERROR("Failed to set overlay camera params. " << e.what());
+				DR_ERROR("Failed to set monocular camera params. " << e.what());
 			}
 		}
 
-		// load overlay parameter set file
-		std::string overlay_param_set_file = getParam<std::string>("overlay_param_set_file", "");
-		if (overlay_param_set_file != "") {
+		// load monocular parameter set file
+		std::string monocular_ueye_param_file = getParam<std::string>("monocular_ueye_param_file", "");
+		if (monocular_ueye_param_file != "") {
 			try {
-				ensenso_camera->loadOverlayParameterSet(overlay_param_set_file);
+				ensenso_camera->loadMonocularUeyeParameters(monocular_ueye_param_file);
 			} catch (dr::NxError const & e) {
-				DR_ERROR("Failed to set overlay param set file. " << e.what());
+				DR_ERROR("Failed to set monocular param set file. " << e.what());
 			}
 		}
 
@@ -154,8 +157,8 @@ protected:
 			publish_images_timer = createTimer(ros::Rate(publish_images_rate), &EnsensoNode::publishImage, this);
 		}
 
-		// check if there is an overlay camera connected
-		has_overlay = ensenso_camera->hasOverlay();
+		// check if there is an monocular camera connected
+		has_monocular = ensenso_camera->hasMonocular();
 
 		DR_SUCCESS("Ensenso opened successfully.");
 	}
@@ -174,8 +177,8 @@ protected:
 		// prepare message
 		cv_bridge::CvImage cv_image(
 			header,
-			has_overlay ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
-			getImage(!has_overlay)
+			has_monocular ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
+			getImage(!has_monocular)
 		);
 
 		// publish the image
@@ -202,7 +205,7 @@ protected:
 	cv::Mat getImage(bool capture) {
 		// get a grayscale image? then enable frontlight
 		int flex_view;
-		if (!has_overlay && capture) {
+		if (!has_monocular && capture) {
 			flex_view = ensenso_camera->flexView();
 			ensenso_camera->setFlexView(0);
 			ensenso_camera->setProjector(false);
@@ -218,7 +221,7 @@ protected:
 		}
 
 		// restore settings
-		if (!has_overlay && capture) {
+		if (!has_monocular && capture) {
 			ensenso_camera->setFrontLight(false);
 			ensenso_camera->setProjector(true);
 			if (flex_view > 0) {
@@ -238,14 +241,14 @@ protected:
 
 		std::string time_string = getTimeString();
 
-		pcl::io::savePCDFile(camera_data_path + "/" + time_string + "_cloud.pcd", *point_cloud);
+		pcl::io::savePCDFileBinary(camera_data_path + "/" + time_string + "_cloud.pcd", *point_cloud);
 		cv::imwrite(camera_data_path + "/" + time_string + "_image.png", image);
 	}
 
-	bool capture(bool stereo, bool overlay) {
+	bool capture(bool stereo, bool monocular) {
 		// retrieve image data
 		try {
-			if (!ensenso_camera->retrieve(true, 3000, stereo, has_overlay && overlay)) {
+			if (!ensenso_camera->retrieve(true, 3000, stereo, has_monocular && monocular)) {
 				DR_ERROR("Failed to retrieve image data.");
 				return false;
 			}
@@ -260,12 +263,12 @@ protected:
 	boost::optional<Data> getData() {
 		cv::Mat image;
 
-		// when using an overlay, capture both simultaneously
-		if (has_overlay) {
+		// when using an monocular, capture both simultaneously
+		if (has_monocular) {
 			if (!capture(true, true)) return boost::none;
 			image = getImage(false);
 
-		// when not using an overlay, capture image first
+		// when not using an monocular, capture image first
 		} else {
 			image = getImage(true);
 			if (!capture(true, false)) return boost::none;
@@ -282,7 +285,7 @@ protected:
 		// get the image
 		cv_bridge::CvImage cv_image(
 			res.point_cloud.header,
-			has_overlay ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
+			has_monocular ? sensor_msgs::image_encodings::BGR8 : sensor_msgs::image_encodings::MONO8,
 			data->image
 		);
 		res.color = *cv_image.toImageMsg();
@@ -327,14 +330,7 @@ protected:
 		}
 
 		try {
-			Eigen::Isometry3d pattern_pose;
-
-			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
-				DR_ERROR("Failed to get pattern pose.");
-				return false;
-			}
-
-			res.data = dr::toRosPose(pattern_pose);
+			res.data = dr::toRosPose(ensenso_camera->detectCalibrationPattern(req.samples));
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to find calibration pattern. " << e.what());
 			return false;
@@ -343,10 +339,10 @@ protected:
 		return true;
 	}
 
-	bool onInitializeCalibration(dr_ensenso_msgs::EnsensoInitializeCalibration::Request & req, dr_ensenso_msgs::EnsensoInitializeCalibration::Response &) {
+	bool onInitializeCalibration(dr_ensenso_msgs::InitializeCalibration::Request & req, dr_ensenso_msgs::InitializeCalibration::Response &) {
 		try {
-			ensenso_camera->discardPatterns();
-			ensenso_camera->clearWorkspace();
+			ensenso_camera->discardCalibrationPatterns();
+			ensenso_camera->clearWorkspaceCalibration();
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to discard patterns. " << e.what());
 			return false;
@@ -355,7 +351,7 @@ protected:
 
 		camera_moving = req.camera_moving;
 		moving_frame  = req.moving_frame;
-		static_frame  = req.static_frame;
+		fixed_frame   = req.fixed_frame;
 
 		// check for valid camera guess
 		if (req.camera_guess.position.x == 0 && req.camera_guess.position.y == 0 && req.camera_guess.position.z == 0 &&
@@ -374,7 +370,7 @@ protected:
 		}
 
 		// check for proper initialization
-		if (moving_frame == "" || static_frame == "") {
+		if (moving_frame == "" || fixed_frame == "") {
 			DR_ERROR("No calibration frame provided.");
 			return false;
 		}
@@ -386,7 +382,7 @@ protected:
 
 	bool onRecordCalibration(dr_msgs::SendPose::Request & req, dr_msgs::SendPose::Response &) {
 		// check for proper initialization
-		if (moving_frame == "" || static_frame == "") {
+		if (moving_frame == "" || fixed_frame == "") {
 			DR_ERROR("No calibration frame provided.");
 			return false;
 		}
@@ -406,9 +402,9 @@ protected:
 		return true;
 	}
 
-	bool onFinalizeCalibration(dr_ensenso_msgs::EnsensoFinalizeCalibration::Request &, dr_ensenso_msgs::EnsensoFinalizeCalibration::Response & res) {
+	bool onFinalizeCalibration(dr_ensenso_msgs::FinalizeCalibration::Request &, dr_ensenso_msgs::FinalizeCalibration::Response & res) {
 		// check for proper initialization
-		if (moving_frame == "" || static_frame == "") {
+		if (moving_frame == "" || fixed_frame == "") {
 			DR_ERROR("No calibration frame provided.");
 			return false;
 		}
@@ -416,16 +412,16 @@ protected:
 		try {
 			// perform calibration
 			dr::Ensenso::CalibrationResult calibration =
-				ensenso_camera->computeCalibration(robot_poses, camera_moving, camera_guess, pattern_guess, camera_moving ? moving_frame : static_frame);
+				ensenso_camera->computeCalibration(robot_poses, camera_moving, camera_guess, pattern_guess, camera_moving ? moving_frame : fixed_frame);
 
 			// copy result
-			res.camera_pose        = dr::toRosPoseStamped(std::get<0>(calibration), camera_moving ? moving_frame : static_frame);
-			res.pattern_pose       = dr::toRosPoseStamped(std::get<1>(calibration), camera_moving ? static_frame : moving_frame);
+			res.camera_pose        = dr::toRosPoseStamped(std::get<0>(calibration), camera_moving ? moving_frame : fixed_frame);
+			res.pattern_pose       = dr::toRosPoseStamped(std::get<1>(calibration), camera_moving ? fixed_frame : moving_frame);
 			res.iterations         = std::get<2>(calibration);
 			res.reprojection_error = std::get<3>(calibration);
 
 			// store result in camera
-			ensenso_camera->storeCalibration();
+			ensenso_camera->storeWorkspaceCalibration();
 
 			// clear state
 			resetCalibration();
@@ -441,25 +437,22 @@ protected:
 		return true;
 	}
 
-	bool setWorkspace(Eigen::Isometry3d const & pattern_pose, std::string const & frame_id, Eigen::Isometry3d const & defined_pose) {
+	bool onSetWorkspaceCalibration(Eigen::Isometry3d const & pattern_pose, std::string const & frame_id, Eigen::Isometry3d const & defined_pose) {
 		if (frame_id == "") {
 			DR_ERROR("Workspace frame id is empty");
 			return false;
 		}
-		ensenso_camera->clearWorkspace();
-		ensenso_camera->setWorkspace(pattern_pose, frame_id, defined_pose);
+		ensenso_camera->clearWorkspaceCalibration();
+		ensenso_camera->setWorkspaceCalibration(pattern_pose, frame_id, defined_pose);
 		return true;
 	}
 
 
 	bool onSetWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
 		try {
-			if (!setWorkspace(dr::toEigen(req.data.pose), req.data.header.frame_id, Eigen::Isometry3d::Identity())) {
-				DR_ERROR("Failed to set work space");
-				return false;
-			}
+			ensenso_camera->setWorkspaceCalibration(dr::toEigen(req.data.pose), req.data.header.frame_id, Eigen::Isometry3d::Identity());
 		} catch (dr::NxError const & e) {
-			DR_ERROR("Failed to set workspace. " << e.what());
+			DR_ERROR("Failed to set workspace calibration: " << e.what());
 			return false;
 		}
 		return true;
@@ -467,27 +460,18 @@ protected:
 
 	bool onClearWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		try {
-			ensenso_camera->clearWorkspace();
+			ensenso_camera->clearWorkspaceCalibration();
 		} catch (dr::NxError const & e) {
-			DR_ERROR("Failed to clear camera pose. " << e.what());
+			DR_ERROR("Failed to clear workspace calibration: " << e.what());
 			return false;
 		}
 		return true;
 	}
 
-	bool onCalibrate(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
+	bool onCalibrateWorkspace(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
 		try {
-			Eigen::Isometry3d pattern_pose;
-			if (!ensenso_camera->getPatternPose(pattern_pose, req.samples)) {
-				DR_ERROR("Failed to get pattern pose.");
-				return false;
-			}
-
-			if (!setWorkspace(pattern_pose, req.frame_id, dr::toEigen(req.workspace))) {
-				DR_ERROR("Failed to set workspace.");
-				return false;
-			}
-			ensenso_camera->storeCalibration();
+			Eigen::Isometry3d pattern_pose = ensenso_camera->detectCalibrationPattern(req.samples);
+			ensenso_camera->setWorkspaceCalibration(pattern_pose, req.frame_id, dr::toEigen(req.pattern), true);
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to calibrate camera pose. " << e.what());
 			return false;
@@ -495,9 +479,9 @@ protected:
 		return true;
 	}
 
-	bool onStoreCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
+	bool onStoreWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
 		try {
-			ensenso_camera->storeCalibration();
+			ensenso_camera->storeWorkspaceCalibration();
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to store calibration. " << e.what());
 			return false;
@@ -507,9 +491,9 @@ protected:
 
 	void publishCalibration(ros::TimerEvent const &) {
 		geometry_msgs::PoseStamped pose;
-		boost::optional<std::string> frame = ensenso_camera->getFrame();
-		if (frame) {
-			pose = dr::toRosPoseStamped(ensenso_camera->getCameraPose()->inverse(), *frame, ros::Time::now());
+		std::string frame = ensenso_camera->getWorkspaceCalibrationFrame();
+		if (!frame.empty()) {
+			pose = dr::toRosPoseStamped(ensenso_camera->getWorkspaceCalibration()->inverse(), frame, ros::Time::now());
 		} else {
 			pose = dr::toRosPoseStamped(Eigen::Isometry3d::Identity(), "", ros::Time::now());
 		}
@@ -540,16 +524,16 @@ protected:
 		ros::ServiceServer finalize_calibration;
 
 		/// Service server for setting the camera pose setting of the Ensenso.
-		ros::ServiceServer set_workspace;
+		ros::ServiceServer set_workspace_calibration;
 
 		/// Service server for clearing the camera pose setting of the Ensenso.
-		ros::ServiceServer clear_workspace;
+		ros::ServiceServer clear_workspace_calibration;
 
 		/// Service server combining 'get_pattern_pose', 'set_workspace', and stores it to the ensenso.
-		ros::ServiceServer calibrate;
+		ros::ServiceServer calibrate_workspace;
 
 		/// Service server for storing the calibration.
-		ros::ServiceServer store_calibration;
+		ros::ServiceServer store_workspace_calibration;
 	} servers;
 
 	/// Object for handling transportation of images.
@@ -582,7 +566,7 @@ protected:
 	std::string moving_frame;
 
 	/// Frame to calibrate the camera to when camera_moving is false (robot origin or world frame).
-	std::string static_frame;
+	std::string fixed_frame;
 
 	/// Serial id of the Ensenso camera.
 	std::string serial;
@@ -611,11 +595,11 @@ protected:
 	/// Location where the images and point clouds are stored.
 	std::string camera_data_path;
 
-	/// If true, the Ensenso has an overlay camera connected.
-	bool has_overlay;
+	/// If true, the Ensenso has an monocular camera connected.
+	bool has_monocular;
 
-	/// If true, tries to connect an overlay camera.
-	bool connect_overlay;
+	/// If true, tries to connect an monocular camera.
+	bool connect_monocular;
 
 	/// Thread pool for parallel work.
 	dr::ThreadPool thread_pool;
@@ -624,7 +608,7 @@ protected:
 }
 
 int main(int argc, char ** argv) {
-	ros::init(argc, argv, "ensenso_node");
+	ros::init(argc, argv, "ensenso");
 	dr::EnsensoNode node;
 	ros::spin();
 }
