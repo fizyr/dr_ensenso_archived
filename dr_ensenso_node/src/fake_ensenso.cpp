@@ -152,8 +152,7 @@ private:
 			std_msgs::Header header;
 			header.frame_id = camera_frame;
 			header.stamp = ros::Time::now();
-			cv_bridge::CvImage cv_image(header, sensor_msgs::image_encodings::BGR8, image);
-			publishers.image.publish(cv_image.toImageMsg());
+			publishers.image.publish(res.color);
 		}
 
 		return true;
