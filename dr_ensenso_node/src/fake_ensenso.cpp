@@ -90,7 +90,7 @@ public:
 		publish_image                  = getParam<bool>("publish_image", publish_image, true);
 
 		publishers.cloud               = advertise<sensor_msgs::PointCloud2>("cloud", 1, true);
-		publishers.image               = image_transport.advertise("rgb_image", 1, true);
+		publishers.image               = image_transport.advertise("image", 1, true);
 
 		servers.camera_data                 = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                   , this);
 		servers.dump_data                   = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                  , this);
