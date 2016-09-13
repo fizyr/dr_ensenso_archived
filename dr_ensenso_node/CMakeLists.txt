@@ -28,7 +28,7 @@ target_link_libraries(ensenso      ${catkin_LIBRARIES})
 target_link_libraries(fake_ensenso ${catkin_LIBRARIES})
 
 install(
-	TARGETS "ensenso"
+	TARGETS ensenso fake_ensenso
 	ARCHIVE DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
 	LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
 	RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
