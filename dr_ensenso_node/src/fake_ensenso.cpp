@@ -149,9 +149,6 @@ private:
 		// publish image if requested
 		if (publish_image) {
 			DR_SUCCESS("Publishing image");
-			std_msgs::Header header;
-			header.frame_id = camera_frame;
-			header.stamp = ros::Time::now();
 			publishers.image.publish(res.color);
 		}
 
