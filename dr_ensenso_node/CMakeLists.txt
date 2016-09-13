@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
 	pcl_conversions
 	pcl_ros
 	roscpp
+	tf2
+	tf2_ros
 )
 
 catkin_package()
@@ -24,11 +26,13 @@ dr_include_directories(
 
 add_executable(ensenso      src/ensenso.cpp src/timestamp.cpp)
 add_executable(fake_ensenso src/fake_ensenso.cpp)
+add_executable(calibrate    src/calibrate.cpp)
 target_link_libraries(ensenso      ${catkin_LIBRARIES})
 target_link_libraries(fake_ensenso ${catkin_LIBRARIES})
+target_link_libraries(calibrate    ${catkin_LIBRARIES})
 
 install(
-	TARGETS ensenso fake_ensenso
+	TARGETS ensenso fake_ensenso calibrate
 	ARCHIVE DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
 	LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
 	RUNTIME DESTINATION "${CATKIN_PACKAGE_BIN_DESTINATION}"
