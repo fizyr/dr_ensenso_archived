@@ -10,6 +10,7 @@
 #include <dr_param/param.hpp>
 #include <dr_ros/node.hpp>
 
+#include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/image_encodings.h>
@@ -35,6 +36,15 @@ private:
 
 	/// Name for the camera frame.
 	std::string camera_frame;
+
+	/// If true, publishes point cloud data when calling getData.
+	bool publish_cloud = true;
+
+	/// If true, publishes point cloud data when calling getData.
+	bool publish_image = true;
+
+	/// Object for transporting images.
+	image_transport::ImageTransport image_transport;
 
 	struct {
 		/// Service server for supplying point clouds and images.
@@ -68,24 +78,37 @@ private:
 		ros::ServiceServer store_workspace_calibration;
 	} servers;
 
+	struct {
+		ros::Publisher cloud;
+		image_transport::Publisher image;
+	} publishers;
+
 public:
-	FakeEnsensoNode() {
-		camera_frame    = getParam<std::string>("camera_frame");
-		servers.camera_data                 = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                  , this);
-		servers.dump_data                   = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                 , this);
-		servers.get_pattern_pose            = advertiseService("get_pattern_pose"           , &FakeEnsensoNode::onGetPatternPose           , this);
-		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &FakeEnsensoNode::onInitializeCalibration    , this);
-		servers.record_calibration          = advertiseService("record_calibration"         , &FakeEnsensoNode::onRecordCalibration        , this);
-		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &FakeEnsensoNode::onFinalizeCalibration      , this);
-		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"  , &FakeEnsensoNode::onSetWorkspaceCalibration  , this);
-		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration", &FakeEnsensoNode::onClearWorkspaceCalibration, this);
-		servers.calibrate_workspace         = advertiseService("calibrate_workspace"        , &FakeEnsensoNode::onCalibrateWorkspace       , this);
-		servers.store_workspace_calibration = advertiseService("store_workspace_calibration", &FakeEnsensoNode::onStoreWorkspaceCalibration, this);
+	FakeEnsensoNode() : image_transport(*this) {
+		camera_frame                   = getParam<std::string>("camera_frame");
+		publish_cloud                  = getParam<bool>("publish_cloud", publish_cloud, true);
+		publish_image                  = getParam<bool>("publish_image", publish_image, true);
+
+		publishers.cloud               = advertise<sensor_msgs::PointCloud2>("cloud", 1, true);
+		publishers.image               = image_transport.advertise("image", 1, true);
+
+		servers.camera_data                 = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                   , this);
+		servers.dump_data                   = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                  , this);
+		servers.get_pattern_pose            = advertiseService("get_pattern_pose"           , &FakeEnsensoNode::onGetPatternPose            , this);
+		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &FakeEnsensoNode::onInitializeCalibration     , this);
+		servers.record_calibration          = advertiseService("record_calibration"         , &FakeEnsensoNode::onRecordCalibration         , this);
+		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &FakeEnsensoNode::onFinalizeCalibration       , this);
+		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"  , &FakeEnsensoNode::onSetWorkspaceCalibration   , this);
+		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration", &FakeEnsensoNode::onClearWorkspaceCalibration , this);
+		servers.calibrate_workspace         = advertiseService("calibrate"                  , &FakeEnsensoNode::onCalibrateWorkspace        , this);
+		servers.store_workspace_calibration = advertiseService("store_calibration"          , &FakeEnsensoNode::onStoreWorkspaceCalibration , this);
 		DR_SUCCESS("Fake Ensenso node initialized.");
 	}
 
 private:
 	bool onGetData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
+		DR_INFO("Received data request.");
+
 		// read image file path
 		std::string image_file = getParam<std::string>("image");
 		std::string point_cloud_file = getParam<std::string>("point_cloud");
@@ -116,6 +139,19 @@ private:
 		// copy the point cloud
 		pcl::toROSMsg(point_cloud, res.point_cloud);
 		res.point_cloud.header = header;
+
+		// publish point cloud if requested
+		if (publish_cloud) {
+			DR_SUCCESS("Publishing cloud");
+			publishers.cloud.publish(res.point_cloud);
+		}
+
+		// publish image if requested
+		if (publish_image) {
+			DR_SUCCESS("Publishing image");
+			publishers.image.publish(res.color);
+		}
+
 		return true;
 	}
 
