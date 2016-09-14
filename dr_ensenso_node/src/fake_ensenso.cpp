@@ -85,12 +85,12 @@ private:
 
 public:
 	FakeEnsensoNode() : image_transport(*this) {
-		camera_frame                   = getParam<std::string>("camera_frame");
-		publish_cloud                  = getParam<bool>("publish_cloud", publish_cloud, true);
-		publish_image                  = getParam<bool>("publish_image", publish_image, true);
+		camera_frame                        = getParam<std::string>("camera_frame");
+		publish_cloud                       = getParam<bool>("publish_cloud", publish_cloud, true);
+		publish_image                       = getParam<bool>("publish_image", publish_image, true);
 
-		publishers.cloud               = advertise<sensor_msgs::PointCloud2>("cloud", 1, true);
-		publishers.image               = image_transport.advertise("image", 1, true);
+		publishers.cloud                    = advertise<sensor_msgs::PointCloud2>("cloud", 1, true);
+		publishers.image                    = image_transport.advertise("image", 1, true);
 
 		servers.camera_data                 = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                   , this);
 		servers.dump_data                   = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                  , this);
@@ -110,8 +110,8 @@ private:
 		DR_INFO("Received data request.");
 
 		// read image file path
-		std::string image_file = getParam<std::string>("image");
-		std::string point_cloud_file = getParam<std::string>("point_cloud");
+		std::string image_file = getParam<std::string>("image_path");
+		std::string point_cloud_file = getParam<std::string>("point_cloud_path");
 
 		if (!boost::filesystem::exists(image_file))       DR_ERROR("Failed to load image: File does not exist: " << image_file);
 		if (!boost::filesystem::exists(point_cloud_file)) DR_ERROR("Failed to load point cloud: File does not exist: " << point_cloud_file);
