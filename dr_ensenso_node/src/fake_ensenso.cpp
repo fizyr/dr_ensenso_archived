@@ -111,7 +111,7 @@ private:
 
 		// read image file path
 		std::string image_file = getParam<std::string>("image_path");
-		std::string point_cloud_file = getParam<std::string>("point_cloud");
+		std::string point_cloud_file = getParam<std::string>("point_cloud_path");
 
 		if (!boost::filesystem::exists(image_file))       DR_ERROR("Failed to load image: File does not exist: " << image_file);
 		if (!boost::filesystem::exists(point_cloud_file)) DR_ERROR("Failed to load point cloud: File does not exist: " << point_cloud_file);
