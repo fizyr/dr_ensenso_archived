@@ -460,6 +460,12 @@ protected:
 
 	bool onCalibrateWorkspace(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
 		DR_INFO("Performing workspace calibration.");
+
+		if (req.frame_id.empty()) {
+			DR_ERROR("Calibration frame not set. Can not calibrate.");
+			return false;
+		}
+
 		try {
 			Eigen::Isometry3d pattern_pose = ensenso_camera->detectCalibrationPattern(req.samples);
 			DR_INFO("Found calibration pattern at:\n" << dr::toYaml(pattern_pose));
