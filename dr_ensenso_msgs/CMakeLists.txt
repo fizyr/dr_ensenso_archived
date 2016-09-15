@@ -12,7 +12,7 @@ add_service_files(FILES
 	Calibrate.srv
 	FinalizeCalibration.srv
 	GetCameraData.srv
-	GetPatternPose.srv
+	DetectCalibrationPattern.srv
 	InitializeCalibration.srv
 )
 

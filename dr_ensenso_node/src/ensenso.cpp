@@ -9,7 +9,7 @@
 #include <dr_ensenso_msgs/Calibrate.h>
 #include <dr_ensenso_msgs/FinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
-#include <dr_ensenso_msgs/GetPatternPose.h>
+#include <dr_ensenso_msgs/DetectCalibrationPattern.h>
 #include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_msgs/SendPose.h>
 #include <dr_msgs/SendPoseStamped.h>
@@ -94,7 +94,7 @@ protected:
 		// activate service servers
 		servers.camera_data                 = advertiseService("get_data"                   , &EnsensoNode::onGetData                  , this);
 		servers.dump_data                   = advertiseService("dump_data"                  , &EnsensoNode::onDumpData                 , this);
-		servers.get_pattern_pose            = advertiseService("get_pattern_pose"           , &EnsensoNode::onGetPatternPose           , this);
+		servers.get_pattern_pose            = advertiseService("detect_calibration_pattern" , &EnsensoNode::onDetectCalibrationPattern , this);
 		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &EnsensoNode::onInitializeCalibration    , this);
 		servers.record_calibration          = advertiseService("record_calibration"         , &EnsensoNode::onRecordCalibration        , this);
 		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &EnsensoNode::onFinalizeCalibration      , this);
@@ -323,7 +323,7 @@ protected:
 		return true;
 	}
 
-	bool onGetPatternPose(dr_ensenso_msgs::GetPatternPose::Request & req, dr_ensenso_msgs::GetPatternPose::Response & res) {
+	bool onDetectCalibrationPattern(dr_ensenso_msgs::DetectCalibrationPattern::Request & req, dr_ensenso_msgs::DetectCalibrationPattern::Response & res) {
 		if (req.samples == 0) {
 			DR_ERROR("Unable to get pattern pose. Number of samples is set to 0.");
 			return false;

@@ -1,3 +1,4 @@
 int32 samples             # The number of samples to record for computing the pattern pose.
+bool ignore_calibration   # If true, give the pattern relative to the left stereo lens.
 ---
 geometry_msgs/Pose data   # The pose of the pattern with respect to the camera lens.
