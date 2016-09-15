@@ -1,6 +1,7 @@
 #include "timestamp.hpp"
 
 #include <dr_eigen/ros.hpp>
+#include <dr_eigen/yaml.hpp>
 #include <dr_ensenso/ensenso.hpp>
 #include <dr_ensenso/util.hpp>
 #include <dr_ros/node.hpp>
@@ -458,8 +459,11 @@ protected:
 	}
 
 	bool onCalibrateWorkspace(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
+		DR_INFO("Performing workspace calibration.");
 		try {
 			Eigen::Isometry3d pattern_pose = ensenso_camera->detectCalibrationPattern(req.samples);
+			DR_INFO("Found calibration pattern at:\n" << dr::toYaml(pattern_pose));
+			DR_INFO("Defined pattern pose:\n" << dr::toYaml(dr::toEigen(req.pattern)));
 			ensenso_camera->setWorkspaceCalibration(pattern_pose, req.frame_id, dr::toEigen(req.pattern), true);
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to calibrate camera pose. " << e.what());
