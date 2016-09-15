@@ -1,6 +1,7 @@
 #include "timestamp.hpp"
 
 #include <dr_eigen/ros.hpp>
+#include <dr_eigen/yaml.hpp>
 #include <dr_ensenso/ensenso.hpp>
 #include <dr_ensenso/util.hpp>
 #include <dr_ros/node.hpp>
@@ -9,7 +10,7 @@
 #include <dr_ensenso_msgs/Calibrate.h>
 #include <dr_ensenso_msgs/FinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
-#include <dr_ensenso_msgs/GetPatternPose.h>
+#include <dr_ensenso_msgs/DetectCalibrationPattern.h>
 #include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_msgs/SendPose.h>
 #include <dr_msgs/SendPoseStamped.h>
@@ -94,7 +95,7 @@ protected:
 		// activate service servers
 		servers.camera_data                 = advertiseService("get_data"                   , &EnsensoNode::onGetData                  , this);
 		servers.dump_data                   = advertiseService("dump_data"                  , &EnsensoNode::onDumpData                 , this);
-		servers.get_pattern_pose            = advertiseService("get_pattern_pose"           , &EnsensoNode::onGetPatternPose           , this);
+		servers.get_pattern_pose            = advertiseService("detect_calibration_pattern" , &EnsensoNode::onDetectCalibrationPattern , this);
 		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &EnsensoNode::onInitializeCalibration    , this);
 		servers.record_calibration          = advertiseService("record_calibration"         , &EnsensoNode::onRecordCalibration        , this);
 		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &EnsensoNode::onFinalizeCalibration      , this);
@@ -323,7 +324,7 @@ protected:
 		return true;
 	}
 
-	bool onGetPatternPose(dr_ensenso_msgs::GetPatternPose::Request & req, dr_ensenso_msgs::GetPatternPose::Response & res) {
+	bool onDetectCalibrationPattern(dr_ensenso_msgs::DetectCalibrationPattern::Request & req, dr_ensenso_msgs::DetectCalibrationPattern::Response & res) {
 		if (req.samples == 0) {
 			DR_ERROR("Unable to get pattern pose. Number of samples is set to 0.");
 			return false;
@@ -437,17 +438,6 @@ protected:
 		return true;
 	}
 
-	bool onSetWorkspaceCalibration(Eigen::Isometry3d const & pattern_pose, std::string const & frame_id, Eigen::Isometry3d const & defined_pose) {
-		if (frame_id == "") {
-			DR_ERROR("Workspace frame id is empty");
-			return false;
-		}
-		ensenso_camera->clearWorkspaceCalibration();
-		ensenso_camera->setWorkspaceCalibration(pattern_pose, frame_id, defined_pose);
-		return true;
-	}
-
-
 	bool onSetWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
 		try {
 			ensenso_camera->setWorkspaceCalibration(dr::toEigen(req.data.pose), req.data.header.frame_id, Eigen::Isometry3d::Identity());
@@ -469,8 +459,17 @@ protected:
 	}
 
 	bool onCalibrateWorkspace(dr_ensenso_msgs::Calibrate::Request & req, dr_ensenso_msgs::Calibrate::Response &) {
+		DR_INFO("Performing workspace calibration.");
+
+		if (req.frame_id.empty()) {
+			DR_ERROR("Calibration frame not set. Can not calibrate.");
+			return false;
+		}
+
 		try {
 			Eigen::Isometry3d pattern_pose = ensenso_camera->detectCalibrationPattern(req.samples);
+			DR_INFO("Found calibration pattern at:\n" << dr::toYaml(pattern_pose));
+			DR_INFO("Defined pattern pose:\n" << dr::toYaml(dr::toEigen(req.pattern)));
 			ensenso_camera->setWorkspaceCalibration(pattern_pose, req.frame_id, dr::toEigen(req.pattern), true);
 		} catch (dr::NxError const & e) {
 			DR_ERROR("Failed to calibrate camera pose. " << e.what());
