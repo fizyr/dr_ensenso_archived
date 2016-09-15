@@ -437,17 +437,6 @@ protected:
 		return true;
 	}
 
-	bool onSetWorkspaceCalibration(Eigen::Isometry3d const & pattern_pose, std::string const & frame_id, Eigen::Isometry3d const & defined_pose) {
-		if (frame_id == "") {
-			DR_ERROR("Workspace frame id is empty");
-			return false;
-		}
-		ensenso_camera->clearWorkspaceCalibration();
-		ensenso_camera->setWorkspaceCalibration(pattern_pose, frame_id, defined_pose);
-		return true;
-	}
-
-
 	bool onSetWorkspaceCalibration(dr_msgs::SendPoseStamped::Request & req, dr_msgs::SendPoseStamped::Response &) {
 		try {
 			ensenso_camera->setWorkspaceCalibration(dr::toEigen(req.data.pose), req.data.header.frame_id, Eigen::Isometry3d::Identity());
