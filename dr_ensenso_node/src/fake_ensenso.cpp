@@ -3,7 +3,7 @@
 #include <dr_ensenso_msgs/FinalizeCalibration.h>
 #include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
-#include <dr_ensenso_msgs/GetPatternPose.h>
+#include <dr_ensenso_msgs/DetectCalibrationPattern.h>
 #include <dr_msgs/SendPose.h>
 #include <dr_msgs/SendPoseStamped.h>
 
@@ -54,7 +54,7 @@ private:
 		ros::ServiceServer dump_data;
 
 		/// Service server for retrieving the pose of the pattern.
-		ros::ServiceServer get_pattern_pose;
+		ros::ServiceServer detect_calibration_pattern;
 
 		/// Service server for initializing the calibration sequence.
 		ros::ServiceServer initialize_calibration;
@@ -94,7 +94,7 @@ public:
 
 		servers.camera_data                 = advertiseService("get_data"                   , &FakeEnsensoNode::onGetData                   , this);
 		servers.dump_data                   = advertiseService("dump_data"                  , &FakeEnsensoNode::onDumpData                  , this);
-		servers.get_pattern_pose            = advertiseService("get_pattern_pose"           , &FakeEnsensoNode::onGetPatternPose            , this);
+		servers.detect_calibration_pattern  = advertiseService("get_pattern_pose"           , &FakeEnsensoNode::onDetectCalibrationPattern  , this);
 		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &FakeEnsensoNode::onInitializeCalibration     , this);
 		servers.record_calibration          = advertiseService("record_calibration"         , &FakeEnsensoNode::onRecordCalibration         , this);
 		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &FakeEnsensoNode::onFinalizeCalibration       , this);
@@ -160,7 +160,7 @@ private:
 		return false;
 	}
 
-	bool onGetPatternPose(dr_ensenso_msgs::GetPatternPose::Request &, dr_ensenso_msgs::GetPatternPose::Response &) {
+	bool onDetectCalibrationPattern(dr_ensenso_msgs::DetectCalibrationPattern::Request &, dr_ensenso_msgs::DetectCalibrationPattern::Response &) {
 		DR_ERROR("The get_pattern_pose service is not implemented in the fake ensenso node.");
 		return false;
 	}
