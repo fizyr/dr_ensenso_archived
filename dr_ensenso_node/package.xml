@@ -8,7 +8,7 @@
 	<author email="j.c.gaiser@delftrobotics.com">Hans Gaiser</author>
 	<author email="maarten@de-vri.es">Maarten de Vries</author>
 
-	<license>all-rights-reserved</license>
+	<license>Apache v2.0</license>
 
 	<buildtool_depend>catkin</buildtool_depend>
 	<depend>cv_bridge</depend>

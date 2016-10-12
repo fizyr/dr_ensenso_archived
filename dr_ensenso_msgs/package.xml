@@ -1,16 +1,15 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>dr_ensenso_msgs</name>
-  <version>0.0.0</version>
-  <description>Message and service definitions for the ROS interface of the Ensenso node.</description>
+	<name>dr_ensenso_msgs</name>
+	<version>0.0.0</version>
+	<description>Message and service definitions for the ROS interface of the Ensenso node.</description>
 
-  <maintainer email="delftrobotics@todo.todo">delftrobotics</maintainer>
-  <license>TODO</license>
+	<maintainer email="j.c.gaiser@delftrobotics.com">Hans Gaiser</maintainer>
+	<license>Apache v2.0</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <depend>message_generation</depend>
-  <depend>message_runtime</depend>
-  <depend>geometry_msgs</depend>
-  <depend>sensor_msgs</depend>
-
+	<buildtool_depend>catkin</buildtool_depend>
+	<depend>message_generation</depend>
+	<depend>message_runtime</depend>
+	<depend>geometry_msgs</depend>
+	<depend>sensor_msgs</depend>
 </package>
