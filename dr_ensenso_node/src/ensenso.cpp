@@ -74,6 +74,7 @@ protected:
 		param<bool>("dump_images", dump_images, true);
 		param<bool>("registered", registered, true);
 		param<bool>("connect_monocular", connect_monocular, true);
+		param<bool>("synced_retrieve", synced_retrieve, false);
 
 		// get Ensenso serial
 		serial = getParam<std::string>("serial", "");
@@ -266,7 +267,10 @@ protected:
 
 		// when using an monocular, capture both simultaneously
 		if (has_monocular) {
-			if (!capture(true, true)) return boost::none;
+			if (!capture(synced_retrieve, true)) return boost::none;
+
+			// capture stereo image after monocular image if we don't synchronize the triggers
+			if (!synced_retrieve && !capture(true, false)) return boost::none;
 			image = getImage(false);
 
 		// when not using an monocular, capture image first
@@ -599,6 +603,9 @@ protected:
 
 	/// If true, tries to connect an monocular camera.
 	bool connect_monocular;
+
+	/// If true, retrieves the monocular camera and Ensenso simultaneously. A hardware trigger is advised to remove the projector from the uEye image.
+	bool synced_retrieve;
 
 	/// Thread pool for parallel work.
 	dr::ThreadPool thread_pool;
