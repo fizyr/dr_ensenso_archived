@@ -7,9 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
 	dr_eigen
 	dr_ensenso
 	dr_ensenso_msgs
-	dr_msgs
-	dr_ros
-	dr_thread
+	dr_param
 	image_transport
 	pcl_conversions
 	pcl_ros

@@ -2,9 +2,6 @@
 
 #include <dr_eigen/ros.hpp>
 #include <dr_eigen/yaml.hpp>
-#include <dr_ros/node.hpp>
-#include <dr_ros/service_client.hpp>
-#include <dr_ros/subscriber.hpp>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>

@@ -1,14 +1,14 @@
 #include <ros/ros.h>
+#include <dr_param/param.hpp>
 #include <dr_ensenso_msgs/Calibrate.h>
 #include <dr_ensenso_msgs/FinalizeCalibration.h>
 #include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
 #include <dr_ensenso_msgs/DetectCalibrationPattern.h>
-#include <dr_msgs/SendPose.h>
-#include <dr_msgs/SendPoseStamped.h>
+#include <dr_ensenso_msgs/SendPose.h>
+#include <dr_ensenso_msgs/SendPoseStamped.h>
 
 #include <dr_param/param.hpp>
-#include <dr_ros/node.hpp>
 
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -23,7 +23,7 @@
 
 namespace dr {
 
-class FakeEnsensoNode : public Node {
+class FakeEnsensoNode : public ros::NodeHandle {
 private:
 	/// Service server for supplying point clouds and images.
 	ros::ServiceServer get_data_server;
@@ -85,9 +85,9 @@ private:
 
 public:
 	FakeEnsensoNode() : image_transport(*this) {
-		camera_frame                        = getParam<std::string>("camera_frame");
-		publish_cloud                       = getParam<bool>("publish_cloud", publish_cloud, true);
-		publish_image                       = getParam<bool>("publish_image", publish_image, true);
+		camera_frame                        = dr::getParam<std::string>(handle(), "camera_frame");
+		publish_cloud                       = dr::getParam<bool>(handle(), "publish_cloud", publish_cloud, true);
+		publish_image                       = dr::getParam<bool>(handle(), "publish_image", publish_image, true);
 
 		publishers.cloud                    = advertise<sensor_msgs::PointCloud2>("cloud", 1, true);
 		publishers.image                    = image_transport.advertise("image", 1, true);
@@ -102,30 +102,33 @@ public:
 		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration", &FakeEnsensoNode::onClearWorkspaceCalibration , this);
 		servers.calibrate_workspace         = advertiseService("calibrate"                  , &FakeEnsensoNode::onCalibrateWorkspace        , this);
 		servers.store_workspace_calibration = advertiseService("store_calibration"          , &FakeEnsensoNode::onStoreWorkspaceCalibration , this);
-		DR_SUCCESS("Fake Ensenso node initialized.");
+		ROS_INFO_STREAM("Fake Ensenso node initialized.");
 	}
 
 private:
+	ros::NodeHandle       & handle()       { return *this; }
+	ros::NodeHandle const & handle() const { return *this; }
+
 	bool onGetData(dr_ensenso_msgs::GetCameraData::Request &, dr_ensenso_msgs::GetCameraData::Response & res) {
-		DR_INFO("Received data request.");
+		ROS_INFO_STREAM("Received data request.");
 
 		// read image file path
-		std::string image_file = getParam<std::string>("image_path");
-		std::string point_cloud_file = getParam<std::string>("point_cloud_path");
+		std::string image_file       = dr::getParam<std::string>(handle(), "image_path");
+		std::string point_cloud_file = dr::getParam<std::string>(handle(), "point_cloud_path");
 
-		if (!boost::filesystem::exists(image_file))       DR_ERROR("Failed to load image: File does not exist: " << image_file);
-		if (!boost::filesystem::exists(point_cloud_file)) DR_ERROR("Failed to load point cloud: File does not exist: " << point_cloud_file);
+		if (!boost::filesystem::exists(image_file))       ROS_ERROR_STREAM("Failed to load image: File does not exist: " << image_file);
+		if (!boost::filesystem::exists(point_cloud_file)) ROS_ERROR_STREAM("Failed to load point cloud: File does not exist: " << point_cloud_file);
 
 		// load image
 		image = cv::imread(image_file);
 		if (image.empty()) {
-			DR_ERROR("Failed to load image from path: " << image_file);
+			ROS_ERROR_STREAM("Failed to load image from path: " << image_file);
 			return false;
 		}
 
 		// load point cloud
 		if (pcl::io::loadPCDFile(point_cloud_file, point_cloud) == -1 || point_cloud.empty()) {
-			DR_ERROR("Failed to load point cloud from path: " << point_cloud_file);
+			ROS_ERROR_STREAM("Failed to load point cloud from path: " << point_cloud_file);
 			return false;
 		}
 
@@ -142,13 +145,13 @@ private:
 
 		// publish point cloud if requested
 		if (publish_cloud) {
-			DR_SUCCESS("Publishing cloud");
+			ROS_INFO_STREAM("Publishing cloud");
 			publishers.cloud.publish(res.point_cloud);
 		}
 
 		// publish image if requested
 		if (publish_image) {
-			DR_SUCCESS("Publishing image");
+			ROS_INFO_STREAM("Publishing image");
 			publishers.image.publish(res.color);
 		}
 
@@ -156,47 +159,47 @@ private:
 	}
 
 	bool onDumpData(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
-		DR_ERROR("The dump_data service is not implemented in the fake ensenso node.");
+		ROS_ERROR_STREAM("The dump_data service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
 	bool onDetectCalibrationPattern(dr_ensenso_msgs::DetectCalibrationPattern::Request &, dr_ensenso_msgs::DetectCalibrationPattern::Response &) {
-		DR_ERROR("The get_pattern_pose service is not implemented in the fake ensenso node.");
+		ROS_ERROR_STREAM("The get_pattern_pose service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
 	bool onInitializeCalibration(dr_ensenso_msgs::InitializeCalibration::Request &, dr_ensenso_msgs::InitializeCalibration::Response &) {
-		DR_ERROR("The initialize_calibration service is not implemented in the fake ensenso node.");
+		ROS_ERROR_STREAM("The initialize_calibration service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
-	bool onRecordCalibration(dr_msgs::SendPose::Request &, dr_msgs::SendPose::Response &) {
-		DR_ERROR("The record_calibration service is not implemented in the fake ensenso node.");
+	bool onRecordCalibration(dr_ensenso_msgs::SendPose::Request &, dr_ensenso_msgs::SendPose::Response &) {
+		ROS_ERROR_STREAM("The record_calibration service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
 	bool onFinalizeCalibration(dr_ensenso_msgs::FinalizeCalibration::Request &, dr_ensenso_msgs::FinalizeCalibration::Response &) {
-		DR_ERROR("The finalize_calibration service is not implemented in the fake ensenso node.");
+		ROS_ERROR_STREAM("The finalize_calibration service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
-	bool onSetWorkspaceCalibration(dr_msgs::SendPoseStamped::Request &, dr_msgs::SendPoseStamped::Response &) {
-		DR_ERROR("The set_workspace service is not implemented in the fake ensenso node.");
+	bool onSetWorkspaceCalibration(dr_ensenso_msgs::SendPoseStamped::Request &, dr_ensenso_msgs::SendPoseStamped::Response &) {
+		ROS_ERROR_STREAM("The set_workspace service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
 	bool onClearWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
-		DR_ERROR("The clear_workspace service is not implemented in the fake ensenso node.");
+		ROS_ERROR_STREAM("The clear_workspace service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
 	bool onCalibrateWorkspace(dr_ensenso_msgs::Calibrate::Request &, dr_ensenso_msgs::Calibrate::Response &) {
-		DR_ERROR("The calibrate service is not implemented in the fake ensenso node.");
+		ROS_ERROR_STREAM("The calibrate service is not implemented in the fake ensenso node.");
 		return false;
 	}
 
 	bool onStoreWorkspaceCalibration(std_srvs::Empty::Request &, std_srvs::Empty::Response &) {
-		DR_ERROR("The store_calibration service is not implemented in the fake ensenso node.");
+		ROS_ERROR_STREAM("The store_calibration service is not implemented in the fake ensenso node.");
 		return false;
 	}
 

@@ -14,6 +14,8 @@ add_service_files(FILES
 	GetCameraData.srv
 	DetectCalibrationPattern.srv
 	InitializeCalibration.srv
+	SendPose.srv
+	SendPoseStamped.srv
 )
 
 generate_messages(
