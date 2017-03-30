@@ -322,7 +322,7 @@ protected:
 		}
 
 		try {
-			res.data = dr::toRosPose(ensenso_camera->detectCalibrationPattern(req.samples));
+			res.data = dr::toRosPose(ensenso_camera->detectCalibrationPattern(req.samples, req.ignore_calibration));
 		} catch (dr::NxError const & e) {
 			ROS_ERROR_STREAM("Failed to find calibration pattern. " << e.what());
 			return false;
