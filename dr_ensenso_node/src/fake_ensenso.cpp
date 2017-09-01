@@ -84,7 +84,7 @@ private:
 	} publishers;
 
 public:
-	FakeEnsensoNode() : image_transport(*this) {
+	FakeEnsensoNode() : ros::NodeHandle("~"), image_transport(*this) {
 		camera_frame                        = dr::getParam<std::string>(handle(), "camera_frame");
 		publish_cloud                       = dr::getParam<bool>(handle(), "publish_cloud", publish_cloud, true);
 		publish_image                       = dr::getParam<bool>(handle(), "publish_image", publish_image, true);
