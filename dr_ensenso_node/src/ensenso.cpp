@@ -3,12 +3,15 @@
 #include <dr_eigen/ros.hpp>
 #include <dr_eigen/yaml.hpp>
 #include <dr_ensenso/ensenso.hpp>
+#include <dr_ensenso/opencv.hpp>
 #include <dr_ensenso/util.hpp>
 #include <dr_param/param.hpp>
 
 #include <dr_ensenso_msgs/Calibrate.h>
 #include <dr_ensenso_msgs/FinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
+#include <dr_ensenso_msgs/GetCameraParams.h>
+#include <dr_ensenso_msgs/SendPoseStamped.h>
 #include <dr_ensenso_msgs/DetectCalibrationPattern.h>
 #include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_ensenso_msgs/SendPose.h>
@@ -97,16 +100,16 @@ protected:
 		}
 
 		// activate service servers
-		servers.camera_data                 = advertiseService("get_data"                   , &EnsensoNode::onGetData                  , this);
-		servers.dump_data                   = advertiseService("dump_data"                  , &EnsensoNode::onDumpData                 , this);
-		servers.get_pattern_pose            = advertiseService("detect_calibration_pattern" , &EnsensoNode::onDetectCalibrationPattern , this);
-		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &EnsensoNode::onInitializeCalibration    , this);
-		servers.record_calibration          = advertiseService("record_calibration"         , &EnsensoNode::onRecordCalibration        , this);
-		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &EnsensoNode::onFinalizeCalibration      , this);
-		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"  , &EnsensoNode::onSetWorkspaceCalibration  , this);
-		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration", &EnsensoNode::onClearWorkspaceCalibration, this);
-		servers.calibrate_workspace         = advertiseService("calibrate_workspace"        , &EnsensoNode::onCalibrateWorkspace       , this);
-		servers.store_workspace_calibration = advertiseService("store_workspace_calibration", &EnsensoNode::onStoreWorkspaceCalibration, this);
+		servers.camera_data                 = advertiseService("get_data"                    , &EnsensoNode::onGetData                  , this);
+		servers.dump_data                   = advertiseService("dump_data"                   , &EnsensoNode::onDumpData                 , this);
+		servers.get_pattern_pose            = advertiseService("detect_calibration_pattern"  , &EnsensoNode::onDetectCalibrationPattern , this);
+		servers.initialize_calibration      = advertiseService("initialize_calibration"      , &EnsensoNode::onInitializeCalibration    , this);
+		servers.record_calibration          = advertiseService("record_calibration"          , &EnsensoNode::onRecordCalibration        , this);
+		servers.finalize_calibration        = advertiseService("finalize_calibration"        , &EnsensoNode::onFinalizeCalibration      , this);
+		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"   , &EnsensoNode::onSetWorkspaceCalibration  , this);
+		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration" , &EnsensoNode::onClearWorkspaceCalibration, this);
+		servers.calibrate_workspace         = advertiseService("calibrate_workspace"         , &EnsensoNode::onCalibrateWorkspace       , this);
+		servers.get_camera_params           = advertiseService("get_camera_params"           , &EnsensoNode::onGetCameraParams          , this);
 
 		// activate publishers
 		publishers.calibration = advertise<geometry_msgs::PoseStamped>("calibration", 1, true);
@@ -483,6 +486,63 @@ protected:
 		return true;
 	}
 
+	bool onGetCameraParams(dr_ensenso_msgs::GetCameraParams::Request & req, dr_ensenso_msgs::GetCameraParams::Response & res) {
+		if (true
+			&& req.camera != dr_ensenso_msgs::GetCameraParams::Request::MONO
+			&& req.camera != dr_ensenso_msgs::GetCameraParams::Request::LEFT
+			&& req.camera != dr_ensenso_msgs::GetCameraParams::Request::RIGHT
+		) {
+			ROS_ERROR_STREAM("Invalid camera type requested.");
+			return false;
+		}
+
+		if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO && !ensenso_camera->hasMonocular()) {
+			ROS_ERROR_STREAM("No monocular camera available!");
+			return false;
+		}
+
+		cv::Mat mat;
+		switch (req.type) {
+			case dr_ensenso_msgs::GetCameraParams::Request::CAMERA_MATRIX: {
+				mat = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
+				? monoCameraMatrix(*(ensenso_camera->nativeMonocular()))
+				: toCameraMatrix(ensenso_camera->native());
+				break;
+			} case dr_ensenso_msgs::GetCameraParams::Request::DISTORTION_MATRIX: {
+				mat = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
+				? monoDistortionParameters(*(ensenso_camera->nativeMonocular()))
+				: toDistortionParameters(ensenso_camera->native());
+				break;
+			} case dr_ensenso_msgs::GetCameraParams::Request::RECTIFICATION_MATRIX: {
+				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
+					ROS_ERROR_STREAM("Request for mono camera rectification matrix is unsupported!");
+					return false;
+				}
+				mat = toRectificationMatrix(ensenso_camera->native());
+				break;
+			} case dr_ensenso_msgs::GetCameraParams::Request::PROJECTION_MATRIX: {
+				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
+					ROS_ERROR_STREAM("Request for mono camera projection matrix is unsupported!");
+					return false;
+				}
+				mat = toProjectionMatrix(ensenso_camera->native());
+				break;
+			} default: {
+				ROS_ERROR_STREAM("Invalid type requested!");
+				return false;
+			}
+		}
+
+		res.params.resize(mat.total());
+		for (int i = 0; i < mat.rows; i++) {
+			for (int j = 0; j < mat.cols; j++) {
+				res.params.at(i*mat.rows+j) = mat.at<double>(i, j);
+			}
+		}
+
+		return true;
+	}
+
 	void publishCalibration(ros::TimerEvent const &) {
 		geometry_msgs::PoseStamped pose;
 		std::string frame = ensenso_camera->getWorkspaceCalibrationFrame();
@@ -528,6 +588,9 @@ protected:
 
 		/// Service server for storing the calibration.
 		ros::ServiceServer store_workspace_calibration;
+
+		/// Service server for retrieving a camera's parameters.
+		ros::ServiceServer get_camera_params;
 	} servers;
 
 	/// Object for handling transportation of images.
