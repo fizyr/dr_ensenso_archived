@@ -85,7 +85,7 @@ cv::Mat toRectificationMatrix(NxLibItem const & item, std::string const & camera
 	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
 	for (std::size_t i=0; i<3; i++) {
 		for (std::size_t j=0; j<3; j++) {
-			result.at<double>(i,j) = item[itmStereo][camera == "Left" ? itmLeft : itmRight][itmRotation][j][i].asDouble(&error);
+			result.at<double>(i,j) = item[itmCalibration][itmStereo][camera == "Left" ? itmLeft : itmRight][itmRotation][j][i].asDouble(&error);
 			if (error) throw NxError(item, error, what);
 		}
 	}
@@ -97,13 +97,13 @@ cv::Mat toProjectionMatrix(NxLibItem const & item, std::string const & camera, s
 	cv::Mat result = cv::Mat::zeros(3, 4, CV_64F);
 	for (std::size_t i=0; i<3; i++) {
 		for (std::size_t j=0; j<3; j++) {
-			result.at<double>(i,j) = item[itmStereo][camera == "Left" ? itmLeft : itmRight][itmCamera][j][i].asDouble(&error);
+			result.at<double>(i,j) = item[itmCalibration][itmStereo][camera == "Left" ? itmLeft : itmRight][itmCamera][j][i].asDouble(&error);
 			if (error) throw NxError(item, error, what);
 		}
 	}
 
 	if (camera == "Right") {
-		double B = item[itmStereo][itmBaseline].asDouble() / 1000.0;
+		double B = item[itmCalibration][itmStereo][itmBaseline].asDouble() / 1000.0;
 		double fx = result.at<double>(0,0);
 		result.at<double>(0,3) = (-fx * B);
 	}
