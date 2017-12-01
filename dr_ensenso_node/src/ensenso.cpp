@@ -506,26 +506,26 @@ protected:
 			case dr_ensenso_msgs::GetCameraParams::Request::CAMERA_MATRIX: {
 				mat = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
 				? monoCameraMatrix(*(ensenso_camera->nativeMonocular()))
-				: toCameraMatrix(ensenso_camera->native());
+				: toCameraMatrix(ensenso_camera->native(), req.camera);
 				break;
 			} case dr_ensenso_msgs::GetCameraParams::Request::DISTORTION_MATRIX: {
 				mat = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
 				? monoDistortionParameters(*(ensenso_camera->nativeMonocular()))
-				: toDistortionParameters(ensenso_camera->native());
+				: toDistortionParameters(ensenso_camera->native(), req.camera);
 				break;
 			} case dr_ensenso_msgs::GetCameraParams::Request::RECTIFICATION_MATRIX: {
 				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
 					ROS_ERROR_STREAM("Request for mono camera rectification matrix is unsupported!");
 					return false;
 				}
-				mat = toRectificationMatrix(ensenso_camera->native());
+				mat = toRectificationMatrix(ensenso_camera->native(), req.camera);
 				break;
 			} case dr_ensenso_msgs::GetCameraParams::Request::PROJECTION_MATRIX: {
 				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
 					ROS_ERROR_STREAM("Request for mono camera projection matrix is unsupported!");
 					return false;
 				}
-				mat = toProjectionMatrix(ensenso_camera->native());
+				mat = toProjectionMatrix(ensenso_camera->native(), req.camera);
 				break;
 			} default: {
 				ROS_ERROR_STREAM("Invalid type requested!");
