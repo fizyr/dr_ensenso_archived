@@ -533,10 +533,9 @@ protected:
 			}
 		}
 
-		res.params.resize(mat.total());
 		for (int i = 0; i < mat.rows; i++) {
 			for (int j = 0; j < mat.cols; j++) {
-				res.params.at(i*mat.rows+j) = mat.at<double>(i, j);
+				res.params.push_back(mat.at<double>(i, j));
 			}
 		}
 

@@ -19,7 +19,7 @@ cv::Mat cameraMatrixImpl(NxLibItem const & item, std::string const & what) {
 
 cv::Mat distortionParametersImpl(NxLibItem const & item, std::string const & what) {
 	int error = 0;
-	cv::Mat result = cv::Mat::zeros(8, 1, CV_64F);
+	cv::Mat result = cv::Mat::zeros(5, 1, CV_64F);
 	for (std::size_t i=0; i<5; i++) {
 		result.at<double>(i) = item[itmDistortion][i].asDouble(&error);
 		if (error) throw NxError(item, error, what);
