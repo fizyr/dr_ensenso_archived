@@ -109,6 +109,7 @@ protected:
 		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"   , &EnsensoNode::onSetWorkspaceCalibration  , this);
 		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration" , &EnsensoNode::onClearWorkspaceCalibration, this);
 		servers.calibrate_workspace         = advertiseService("calibrate_workspace"         , &EnsensoNode::onCalibrateWorkspace       , this);
+		servers.store_workspace_calibration = advertiseService("store_workspace_calibration" , &EnsensoNode::onStoreWorkspaceCalibration, this);
 		servers.get_camera_params           = advertiseService("get_camera_params"           , &EnsensoNode::onGetCameraParams          , this);
 
 		// activate publishers
