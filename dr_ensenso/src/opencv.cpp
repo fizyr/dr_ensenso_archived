@@ -5,28 +5,6 @@
 
 namespace dr {
 
-cv::Mat cameraMatrixImpl(NxLibItem const & item, std::string const & what) {
-	int error = 0;
-	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
-	for (std::size_t i=0; i<3; i++) {
-		for (std::size_t j=0; j<3; j++) {
-			result.at<double>(i,j) = item[itmCamera][j][i].asDouble(&error);
-			if (error) throw NxError(item, error, what);
-		}
-	}
-	return result;
-}
-
-cv::Mat distortionParametersImpl(NxLibItem const & item, std::string const & what) {
-	int error = 0;
-	cv::Mat result = cv::Mat::zeros(5, 1, CV_64F);
-	for (std::size_t i=0; i<5; i++) {
-		result.at<double>(i) = item[itmDistortion][i].asDouble(&error);
-		if (error) throw NxError(item, error, what);
-	}
-	return result;
-}
-
 cv::Mat toCvMat(NxLibItem const & item, std::string const & what) {
 	int error = 0;
 	cv::Mat result;
@@ -40,44 +18,42 @@ cv::Mat toCvMat(NxLibItem const & item, std::string const & what) {
 	return result;
 }
 
-cv::Mat toCameraMatrix(NxLibItem const & item, std::string const & camera, std::string const & what) {
-	cv::Mat result;
-	try {
-		result = cameraMatrixImpl(item[itmCalibration][itmMonocular][camera == "Left" ? itmLeft : itmRight], what);
-	} catch (NxError const & e) {
-		throw e;
+cv::Mat cameraMatrixImpl(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
+	for (std::size_t i=0; i<3; i++) {
+		for (std::size_t j=0; j<3; j++) {
+			result.at<double>(i,j) = item[itmCamera][j][i].asDouble(&error);
+			if (error) throw NxError(item, error, what);
+		}
 	}
 	return result;
 }
 
-cv::Mat monoCameraMatrix(NxLibItem const & item, std::string const & what) {
-	cv::Mat result;
-	try {
-		result = cameraMatrixImpl(item[itmCalibration], what);
-	} catch (NxError const & e) {
-		throw e;
+cv::Mat toCameraMatrix(NxLibItem const & item, std::string const & camera, std::string const & what) {
+	if (camera.compare("Mono") == 0) {
+		return cameraMatrixImpl(item, what);
+	} else {
+		return cameraMatrixImpl(item[itmMonocular][camera == "Left" ? itmLeft : itmRight], what);
+	}
+}
+
+cv::Mat distortionParametersImpl(NxLibItem const & item, std::string const & what) {
+	int error = 0;
+	cv::Mat result = cv::Mat::zeros(5, 1, CV_64F);
+	for (std::size_t i=0; i<5; i++) {
+		result.at<double>(i) = item[itmDistortion][i].asDouble(&error);
+		if (error) throw NxError(item, error, what);
 	}
 	return result;
 }
 
 cv::Mat toDistortionParameters(NxLibItem const & item, std::string const & camera, std::string const & what) {
-	cv::Mat result;
-	try {
-		result = distortionParametersImpl(item[itmCalibration][itmMonocular][camera == "Left" ? itmLeft : itmRight], what);
-	} catch (NxError const & e) {
-		throw e;
+	if (camera.compare("Mono") == 0) {
+		return distortionParametersImpl(item, what);
+	} else {
+		return distortionParametersImpl(item[itmMonocular][camera == "Left" ? itmLeft : itmRight], what);
 	}
-	return result;
-}
-
-cv::Mat monoDistortionParameters(NxLibItem const & item, std::string const & what) {
-	cv::Mat result;
-	try {
-		result = distortionParametersImpl(item[itmCalibration], what);
-	} catch (NxError const & e) {
-		throw e;
-	}
-	return result;
 }
 
 cv::Mat toRectificationMatrix(NxLibItem const & item, std::string const & camera, std::string const & what) {
@@ -85,7 +61,7 @@ cv::Mat toRectificationMatrix(NxLibItem const & item, std::string const & camera
 	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
 	for (std::size_t i=0; i<3; i++) {
 		for (std::size_t j=0; j<3; j++) {
-			result.at<double>(i,j) = item[itmCalibration][itmStereo][camera == "Left" ? itmLeft : itmRight][itmRotation][j][i].asDouble(&error);
+			result.at<double>(i,j) = item[itmStereo][camera == "Left" ? itmLeft : itmRight][itmRotation][j][i].asDouble(&error);
 			if (error) throw NxError(item, error, what);
 		}
 	}
@@ -97,13 +73,13 @@ cv::Mat toProjectionMatrix(NxLibItem const & item, std::string const & camera, s
 	cv::Mat result = cv::Mat::zeros(3, 4, CV_64F);
 	for (std::size_t i=0; i<3; i++) {
 		for (std::size_t j=0; j<3; j++) {
-			result.at<double>(i,j) = item[itmCalibration][itmStereo][camera == "Left" ? itmLeft : itmRight][itmCamera][j][i].asDouble(&error);
+			result.at<double>(i,j) = item[itmStereo][camera == "Left" ? itmLeft : itmRight][itmCamera][j][i].asDouble(&error);
 			if (error) throw NxError(item, error, what);
 		}
 	}
 
 	if (camera == "Right") {
-		double B = item[itmCalibration][itmStereo][itmBaseline].asDouble() / 1000.0;
+		double B = item[itmStereo][itmBaseline].asDouble() / 1000.0;
 		double fx = result.at<double>(0,0);
 		result.at<double>(0,3) = (-fx * B);
 	}
