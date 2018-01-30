@@ -506,22 +506,22 @@ protected:
 		switch (req.type) {
 			case dr_ensenso_msgs::GetCameraParams::Request::CAMERA_MATRIX: {
 				NxLibItem item = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
-				? *(ensenso_camera->nativeMonocular())
-				: ensenso_camera->native();
-				mat = toCameraMatrix(item[itmCalibration], req.camera);
+				? (*(ensenso_camera->nativeMonocular()))[itmCalibration]
+				: ensenso_camera->native()[itmCalibration][itmMonocular][req.camera == "Left" ? itmLeft : itmRight];
+				mat = toCameraMatrix(item);
 				break;
 			} case dr_ensenso_msgs::GetCameraParams::Request::DISTORTION_MATRIX: {
 				NxLibItem item = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
-				? *(ensenso_camera->nativeMonocular())
-				: ensenso_camera->native();
-				mat = toDistortionParameters(item[itmCalibration], req.camera);
+				? (*(ensenso_camera->nativeMonocular()))[itmCalibration]
+				: ensenso_camera->native()[itmCalibration][itmMonocular][req.camera == "Left" ? itmLeft : itmRight];
+				mat = toDistortionParameters(item);
 				break;
 			} case dr_ensenso_msgs::GetCameraParams::Request::RECTIFICATION_MATRIX: {
 				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
 					ROS_ERROR_STREAM("Request for mono camera rectification matrix is unsupported!");
 					return false;
 				}
-				mat = toRectificationMatrix(ensenso_camera->native()[itmCalibration], req.camera);
+				mat = toRectificationMatrix(ensenso_camera->native()[itmCalibration][itmStereo][req.camera == "Left" ? itmLeft : itmRight]);
 				break;
 			} case dr_ensenso_msgs::GetCameraParams::Request::PROJECTION_MATRIX: {
 				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {

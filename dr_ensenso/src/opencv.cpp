@@ -18,7 +18,7 @@ cv::Mat toCvMat(NxLibItem const & item, std::string const & what) {
 	return result;
 }
 
-cv::Mat cameraMatrixImpl(NxLibItem const & item, std::string const & what) {
+cv::Mat toCameraMatrix(NxLibItem const & item, std::string const & what) {
 	int error = 0;
 	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
 	for (std::size_t i=0; i<3; i++) {
@@ -30,15 +30,7 @@ cv::Mat cameraMatrixImpl(NxLibItem const & item, std::string const & what) {
 	return result;
 }
 
-cv::Mat toCameraMatrix(NxLibItem const & item, std::string const & camera, std::string const & what) {
-	if (camera.compare("Mono") == 0) {
-		return cameraMatrixImpl(item, what);
-	} else {
-		return cameraMatrixImpl(item[itmMonocular][camera == "Left" ? itmLeft : itmRight], what);
-	}
-}
-
-cv::Mat distortionParametersImpl(NxLibItem const & item, std::string const & what) {
+cv::Mat toDistortionParameters(NxLibItem const & item, std::string const & what) {
 	int error = 0;
 	cv::Mat result = cv::Mat::zeros(5, 1, CV_64F);
 	for (std::size_t i=0; i<5; i++) {
@@ -48,20 +40,12 @@ cv::Mat distortionParametersImpl(NxLibItem const & item, std::string const & wha
 	return result;
 }
 
-cv::Mat toDistortionParameters(NxLibItem const & item, std::string const & camera, std::string const & what) {
-	if (camera.compare("Mono") == 0) {
-		return distortionParametersImpl(item, what);
-	} else {
-		return distortionParametersImpl(item[itmMonocular][camera == "Left" ? itmLeft : itmRight], what);
-	}
-}
-
-cv::Mat toRectificationMatrix(NxLibItem const & item, std::string const & camera, std::string const & what) {
+cv::Mat toRectificationMatrix(NxLibItem const & item, std::string const & what) {
 	int error = 0;
 	cv::Mat result = cv::Mat::zeros(3, 3, CV_64F);
 	for (std::size_t i=0; i<3; i++) {
 		for (std::size_t j=0; j<3; j++) {
-			result.at<double>(i,j) = item[itmStereo][camera == "Left" ? itmLeft : itmRight][itmRotation][j][i].asDouble(&error);
+			result.at<double>(i,j) = item[itmRotation][j][i].asDouble(&error);
 			if (error) throw NxError(item, error, what);
 		}
 	}
