@@ -35,6 +35,41 @@
 
 #include <memory>
 
+namespace {
+
+boost::optional<cv::Mat> getCameraParams(dr_ensenso_msgs::GetCameraParams::Request const & req, std::unique_ptr<dr::Ensenso> & ensenso_camera) {
+	switch (req.type) {
+		case dr_ensenso_msgs::GetCameraParams::Request::CAMERA_MATRIX: {
+			NxLibItem item = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
+			? (*(ensenso_camera->nativeMonocular()))[itmCalibration]
+			: ensenso_camera->native()[itmCalibration][itmMonocular][req.camera == "Left" ? itmLeft : itmRight];
+			return dr::toCameraMatrix(item);
+		} case dr_ensenso_msgs::GetCameraParams::Request::DISTORTION_MATRIX: {
+			NxLibItem item = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
+			? (*(ensenso_camera->nativeMonocular()))[itmCalibration]
+			: ensenso_camera->native()[itmCalibration][itmMonocular][req.camera == "Left" ? itmLeft : itmRight];
+			return dr::toDistortionParameters(item);
+		} case dr_ensenso_msgs::GetCameraParams::Request::RECTIFICATION_MATRIX: {
+			if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
+				ROS_ERROR_STREAM("Request for mono camera rectification matrix is unsupported!");
+				return boost::none;
+			}
+			return dr::toRectificationMatrix(ensenso_camera->native()[itmCalibration][itmStereo][req.camera == "Left" ? itmLeft : itmRight]);
+		} case dr_ensenso_msgs::GetCameraParams::Request::PROJECTION_MATRIX: {
+			if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
+				ROS_ERROR_STREAM("Request for mono camera projection matrix is unsupported!");
+				return boost::none;
+			}
+			return dr::toProjectionMatrix(ensenso_camera->native()[itmCalibration], req.camera);
+		} default: {
+			ROS_ERROR_STREAM("Invalid type requested!");
+			return boost::none;
+		}
+	}
+}
+
+}
+
 namespace dr {
 
 // this is needed because std::make_unique only exists from c++14
@@ -502,43 +537,12 @@ protected:
 			return false;
 		}
 
-		cv::Mat mat;
-		switch (req.type) {
-			case dr_ensenso_msgs::GetCameraParams::Request::CAMERA_MATRIX: {
-				NxLibItem item = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
-				? (*(ensenso_camera->nativeMonocular()))[itmCalibration]
-				: ensenso_camera->native()[itmCalibration][itmMonocular][req.camera == "Left" ? itmLeft : itmRight];
-				mat = toCameraMatrix(item);
-				break;
-			} case dr_ensenso_msgs::GetCameraParams::Request::DISTORTION_MATRIX: {
-				NxLibItem item = (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO)
-				? (*(ensenso_camera->nativeMonocular()))[itmCalibration]
-				: ensenso_camera->native()[itmCalibration][itmMonocular][req.camera == "Left" ? itmLeft : itmRight];
-				mat = toDistortionParameters(item);
-				break;
-			} case dr_ensenso_msgs::GetCameraParams::Request::RECTIFICATION_MATRIX: {
-				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
-					ROS_ERROR_STREAM("Request for mono camera rectification matrix is unsupported!");
-					return false;
-				}
-				mat = toRectificationMatrix(ensenso_camera->native()[itmCalibration][itmStereo][req.camera == "Left" ? itmLeft : itmRight]);
-				break;
-			} case dr_ensenso_msgs::GetCameraParams::Request::PROJECTION_MATRIX: {
-				if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
-					ROS_ERROR_STREAM("Request for mono camera projection matrix is unsupported!");
-					return false;
-				}
-				mat = toProjectionMatrix(ensenso_camera->native()[itmCalibration], req.camera);
-				break;
-			} default: {
-				ROS_ERROR_STREAM("Invalid type requested!");
-				return false;
-			}
-		}
+		boost::optional<cv::Mat> mat = getCameraParams(req, ensenso_camera);
+		if (!mat) return false;
 
-		for (int i = 0; i < mat.rows; i++) {
-			for (int j = 0; j < mat.cols; j++) {
-				res.params.push_back(mat.at<double>(i, j));
+		for (int i = 0; i < mat->rows; i++) {
+			for (int j = 0; j < mat->cols; j++) {
+				res.params.push_back(mat->at<double>(i, j));
 			}
 		}
 
