@@ -524,9 +524,9 @@ protected:
 
 	bool onGetCameraParams(dr_ensenso_msgs::GetCameraParams::Request & req, dr_ensenso_msgs::GetCameraParams::Response & res) {
 		if (true
-			&& (req.camera) == dr_ensenso_msgs::GetCameraParams::Request::MONO
-			&& (req.camera) == dr_ensenso_msgs::GetCameraParams::Request::LEFT
-			&& (req.camera) == dr_ensenso_msgs::GetCameraParams::Request::RIGHT
+			&& (req.camera) != dr_ensenso_msgs::GetCameraParams::Request::MONO
+			&& (req.camera) != dr_ensenso_msgs::GetCameraParams::Request::LEFT
+			&& (req.camera) != dr_ensenso_msgs::GetCameraParams::Request::RIGHT
 		) {
 			ROS_ERROR_STREAM("Invalid camera type " << req.camera << " requested.");
 			return false;
