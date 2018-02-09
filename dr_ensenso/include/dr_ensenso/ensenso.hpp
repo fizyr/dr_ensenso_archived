@@ -43,6 +43,11 @@ public:
 		return monocular_camera;
 	}
 
+	/// Read input state from sensor.
+	bool readInputState() const {
+		return ensenso_camera[itmParameters][itmIO][itmInput].asBool();
+	}
+
 	/// Returns whether the Ensenso has a monocular camera.
 	bool hasMonocular() const {
 		return !!nativeMonocular();
