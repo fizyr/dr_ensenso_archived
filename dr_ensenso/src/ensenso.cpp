@@ -42,7 +42,7 @@ std::string Ensenso::monocularSerialNumber() const {
 }
 
 bool Ensenso::loadParameters(std::string const parameters_file) {
-	return setNxJsonFromFile(ensenso_camera[itmParameters], parameters_file);
+	return setNxJsonFromFile(ensenso_camera, parameters_file);
 }
 
 bool Ensenso::loadMonocularParameters(std::string const parameters_file) {
