@@ -1,0 +1,13 @@
+string RIGHT = Right
+string LEFT  = Left
+string MONO  = Mono
+
+uint8 CAMERA_MATRIX        = 0
+uint8 DISTORTION_MATRIX    = 1
+uint8 RECTIFICATION_MATRIX = 2
+uint8 PROJECTION_MATRIX    = 3
+
+string camera    # Specify which camera we want the parameters of.
+uint8 type       # Specify what type of parameters we want.
+---
+float64[] params # The camera parameters.

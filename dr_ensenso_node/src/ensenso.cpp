@@ -3,12 +3,15 @@
 #include <dr_eigen/ros.hpp>
 #include <dr_eigen/yaml.hpp>
 #include <dr_ensenso/ensenso.hpp>
+#include <dr_ensenso/opencv.hpp>
 #include <dr_ensenso/util.hpp>
 #include <dr_param/param.hpp>
 
 #include <dr_ensenso_msgs/Calibrate.h>
 #include <dr_ensenso_msgs/FinalizeCalibration.h>
 #include <dr_ensenso_msgs/GetCameraData.h>
+#include <dr_ensenso_msgs/GetCameraParams.h>
+#include <dr_ensenso_msgs/SendPoseStamped.h>
 #include <dr_ensenso_msgs/DetectCalibrationPattern.h>
 #include <dr_ensenso_msgs/InitializeCalibration.h>
 #include <dr_ensenso_msgs/SendPose.h>
@@ -31,6 +34,46 @@
 #include <boost/optional.hpp>
 
 #include <memory>
+
+namespace {
+
+NxLibItem selectNxItmCalibration(std::string const & camera, dr::Ensenso const & ensenso_camera) {
+	NxLibItem item;
+	if (camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
+		if (!ensenso_camera.hasMonocular()) throw std::runtime_error("No monocular camera available!");
+		return (*(ensenso_camera.nativeMonocular()))[itmCalibration];
+	} else if (camera == "Left") {
+		return ensenso_camera.native()[itmCalibration][itmMonocular][itmLeft];
+	} else if (camera == "Right") {
+		return ensenso_camera.native()[itmCalibration][itmMonocular][itmRight];
+	} else {
+		throw std::runtime_error("Invalid camera requested.");
+	}
+}
+
+cv::Mat getCameraParams(dr_ensenso_msgs::GetCameraParams::Request const & req, dr::Ensenso const & ensenso_camera) {
+	switch (req.type) {
+		case dr_ensenso_msgs::GetCameraParams::Request::CAMERA_MATRIX: {
+			return dr::toCameraMatrix(selectNxItmCalibration(req.camera, ensenso_camera));
+		} case dr_ensenso_msgs::GetCameraParams::Request::DISTORTION_MATRIX: {
+			return dr::toDistortionParameters(selectNxItmCalibration(req.camera, ensenso_camera));
+		} case dr_ensenso_msgs::GetCameraParams::Request::RECTIFICATION_MATRIX: {
+			if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
+				throw std::runtime_error("Request for mono camera rectification matrix is unsupported!");
+			}
+			return dr::toRectificationMatrix(ensenso_camera.native()[itmCalibration][itmStereo][req.camera == "Left" ? itmLeft : itmRight]);
+		} case dr_ensenso_msgs::GetCameraParams::Request::PROJECTION_MATRIX: {
+			if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO) {
+				throw std::runtime_error("Request for mono camera projection matrix is unsupported!");
+			}
+			return dr::toProjectionMatrix(ensenso_camera.native()[itmCalibration], req.camera);
+		} default: {
+			throw std::runtime_error("Invalid type requested!");
+		}
+	}
+}
+
+}
 
 namespace dr {
 
@@ -97,16 +140,17 @@ protected:
 		}
 
 		// activate service servers
-		servers.camera_data                 = advertiseService("get_data"                   , &EnsensoNode::onGetData                  , this);
-		servers.dump_data                   = advertiseService("dump_data"                  , &EnsensoNode::onDumpData                 , this);
-		servers.get_pattern_pose            = advertiseService("detect_calibration_pattern" , &EnsensoNode::onDetectCalibrationPattern , this);
-		servers.initialize_calibration      = advertiseService("initialize_calibration"     , &EnsensoNode::onInitializeCalibration    , this);
-		servers.record_calibration          = advertiseService("record_calibration"         , &EnsensoNode::onRecordCalibration        , this);
-		servers.finalize_calibration        = advertiseService("finalize_calibration"       , &EnsensoNode::onFinalizeCalibration      , this);
-		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"  , &EnsensoNode::onSetWorkspaceCalibration  , this);
-		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration", &EnsensoNode::onClearWorkspaceCalibration, this);
-		servers.calibrate_workspace         = advertiseService("calibrate_workspace"        , &EnsensoNode::onCalibrateWorkspace       , this);
-		servers.store_workspace_calibration = advertiseService("store_workspace_calibration", &EnsensoNode::onStoreWorkspaceCalibration, this);
+		servers.camera_data                 = advertiseService("get_data"                    , &EnsensoNode::onGetData                  , this);
+		servers.dump_data                   = advertiseService("dump_data"                   , &EnsensoNode::onDumpData                 , this);
+		servers.get_pattern_pose            = advertiseService("detect_calibration_pattern"  , &EnsensoNode::onDetectCalibrationPattern , this);
+		servers.initialize_calibration      = advertiseService("initialize_calibration"      , &EnsensoNode::onInitializeCalibration    , this);
+		servers.record_calibration          = advertiseService("record_calibration"          , &EnsensoNode::onRecordCalibration        , this);
+		servers.finalize_calibration        = advertiseService("finalize_calibration"        , &EnsensoNode::onFinalizeCalibration      , this);
+		servers.set_workspace_calibration   = advertiseService("set_workspace_calibration"   , &EnsensoNode::onSetWorkspaceCalibration  , this);
+		servers.clear_workspace_calibration = advertiseService("clear_workspace_calibration" , &EnsensoNode::onClearWorkspaceCalibration, this);
+		servers.calibrate_workspace         = advertiseService("calibrate_workspace"         , &EnsensoNode::onCalibrateWorkspace       , this);
+		servers.store_workspace_calibration = advertiseService("store_workspace_calibration" , &EnsensoNode::onStoreWorkspaceCalibration, this);
+		servers.get_camera_params           = advertiseService("get_camera_params"           , &EnsensoNode::onGetCameraParams          , this);
 
 		// activate publishers
 		publishers.calibration = advertise<geometry_msgs::PoseStamped>("calibration", 1, true);
@@ -483,6 +527,36 @@ protected:
 		return true;
 	}
 
+	bool onGetCameraParams(dr_ensenso_msgs::GetCameraParams::Request & req, dr_ensenso_msgs::GetCameraParams::Response & res) {
+		if (true
+			&& req.camera != dr_ensenso_msgs::GetCameraParams::Request::MONO
+			&& req.camera != dr_ensenso_msgs::GetCameraParams::Request::LEFT
+			&& req.camera != dr_ensenso_msgs::GetCameraParams::Request::RIGHT
+		) {
+			ROS_ERROR_STREAM("Invalid camera type " << req.camera << " requested.");
+			return false;
+		}
+
+		if (req.camera == dr_ensenso_msgs::GetCameraParams::Request::MONO && !ensenso_camera->hasMonocular()) {
+			ROS_ERROR_STREAM("No monocular camera available!");
+			return false;
+		}
+
+		try {
+			cv::Mat mat = getCameraParams(req, *ensenso_camera);
+			for (int i = 0; i < mat.rows; i++) {
+				for (int j = 0; j < mat.cols; j++) {
+					res.params.push_back(mat.at<double>(i, j));
+				}
+			}
+		} catch (std::runtime_error const & e) {
+			ROS_ERROR_STREAM(e.what());
+			return false;
+		}
+
+		return true;
+	}
+
 	void publishCalibration(ros::TimerEvent const &) {
 		geometry_msgs::PoseStamped pose;
 		std::string frame = ensenso_camera->getWorkspaceCalibrationFrame();
@@ -528,6 +602,9 @@ protected:
 
 		/// Service server for storing the calibration.
 		ros::ServiceServer store_workspace_calibration;
+
+		/// Service server for retrieving a camera's parameters.
+		ros::ServiceServer get_camera_params;
 	} servers;
 
 	/// Object for handling transportation of images.
