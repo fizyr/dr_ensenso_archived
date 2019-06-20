@@ -68,6 +68,9 @@ public:
 	/// Loads the monocular camera uEye parameters from a INI file. Returns false if file was not found.
 	void loadMonocularUeyeParameters(std::string const parameters_file);
 
+	/// Activates the CUDA device on or off.
+	void setCuda(bool state, int device = 0);
+
 	/// Returns the current FlexView value. If disabled, returns -1.
 	int flexView() const;
 

@@ -57,6 +57,11 @@ void Ensenso::loadMonocularUeyeParameters(std::string const parameters_file) {
 	executeNx(command);
 }
 
+void Ensenso::setCuda(bool state, int device) {
+	setNx(root[itmParameters][itmCUDA][itmEnabled], state);
+	setNx(root[itmParameters][itmCUDA][itmDevice], device);
+}
+
 int Ensenso::flexView() const {
 	try {
 		// in case FlexView = false, getting the int value gives an error

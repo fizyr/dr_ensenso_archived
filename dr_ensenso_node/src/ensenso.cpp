@@ -121,6 +121,7 @@ protected:
 		param<bool>("connect_monocular", connect_monocular, true);
 		param<bool>("use_frontlight", use_frontlight, true);
 		param<bool>("synced_retrieve", synced_retrieve, false);
+		param<bool>("use_cuda", use_cuda, false);
 
 		// get Ensenso serial
 		serial = dr::getParam<std::string>(handle(), "serial", "");
@@ -137,6 +138,11 @@ protected:
 			throw std::runtime_error("Failed initializing camera. " + std::string(e.what()));
 		} catch (std::runtime_error const & e) {
 			throw std::runtime_error("Failed initializing camera. " + std::string(e.what()));
+		}
+
+		if (use_cuda) {
+			int cuda_device = dr::getParam(handle(), "cuda_device", 0);
+			ensenso_camera->setCuda(use_cuda, cuda_device);
 		}
 
 		// activate service servers
@@ -650,6 +656,9 @@ protected:
 
 	/// If true, registers the point clouds.
 	bool registered;
+
+	/// If true, use CUDA to accelerate certain processes in nxLib.
+	bool use_cuda;
 
 	// Guess of the camera pose relative to gripper (for moving camera) or relative to robot origin (for static camera).
 	boost::optional<Eigen::Isometry3d> camera_guess;
