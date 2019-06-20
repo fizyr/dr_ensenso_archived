@@ -15,6 +15,13 @@ find_package(Eigen REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 
+find_package(OpenMP REQUIRED)
+if(OPENMP_FOUND)
+	message(STATUS "OPENMP FOUND")
+	set(OpenMP_FLAGS ${OpenMP_CXX_FLAGS})  # or if you use C: ${OpenMP_C_FLAGS}
+	set(OpenMP_LIBS gomp)
+endif()
+
 SET(SYSTEM_LIBRARIES    ${Ensenso_LIBRARIES}    ${Boost_LIBRARIES}    ${Eigen_LIBRARIES}    ${OpenCV_LIBRARIES}    ${PCL_LIBRARIES})
 SET(SYSTEM_INCLUDE_DIRS ${Ensenso_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
@@ -38,7 +45,9 @@ add_library(${PROJECT_NAME}
 	src/pcl.cpp
 	src/util.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${SYSTEM_LIBRARIES})
+
+target_compile_options(${PROJECT_NAME} PRIVATE ${OpenMP_FLAGS})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${SYSTEM_LIBRARIES} ${OpenMP_LIBS})
 
 install(
 	TARGETS "${PROJECT_NAME}"
