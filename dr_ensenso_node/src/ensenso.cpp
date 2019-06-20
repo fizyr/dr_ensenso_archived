@@ -195,13 +195,13 @@ protected:
 		resetCalibration();
 
 		// start publish calibration timer
-		double calibration_timer_rate = dr::getParam(handle(), "calibration_timer_rate", -1);
+		double calibration_timer_rate = dr::getParam(handle(), "calibration_timer_rate", -1.0);
 		if (calibration_timer_rate > 0) {
 			publish_calibration_timer = createTimer(ros::Duration(calibration_timer_rate), &EnsensoNode::publishCalibration, this);
 		}
 
 		// start image publishing timer
-		double publish_images_rate = dr::getParam(handle(), "publish_images_rate", 30);
+		double publish_images_rate = dr::getParam(handle(), "publish_images_rate", 30.0);
 		if (publish_images_rate > 0) {
 			publish_images_timer = createTimer(ros::Rate(publish_images_rate), &EnsensoNode::publishImage, this);
 		}
