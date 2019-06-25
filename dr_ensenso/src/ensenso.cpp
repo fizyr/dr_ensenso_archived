@@ -187,10 +187,13 @@ void Ensenso::loadRegisteredPointCloud(pcl::PointCloud<pcl::PointXYZ> & cloud, c
 	// Render point cloud.
 	{
 		NxLibCommand command(cmdRenderPointMap);
-		setNx(command.parameters()[itmNear], 1); // distance in millimeters to the camera (clip nothing?)
+		setNx(command.parameters()[itmNear], 1); // min distance in millimeters to the camera
+		setNx(command.parameters()[itmFar], 10000); // max distance in millimeters from the camera
 		setNx(command.parameters()[itmCamera], monocularSerialNumber());
+
 		// gives weird (RenderPointMap) results with OpenGL enabled, so disable
 		setNx(root[itmParameters][itmRenderPointMap][itmUseOpenGL], false);
+		setNx(root[itmParameters][itmRenderPointMap][itmPixelSize], 1);
 		executeNx(command);
 	}
 
