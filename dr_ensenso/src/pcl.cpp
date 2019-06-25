@@ -1,3 +1,4 @@
+#include <omp.h>
 #include "pcl.hpp"
 #include "util.hpp"
 
@@ -41,6 +42,8 @@ pcl::PointCloud<pcl::PointXYZ> toPointCloud(NxLibItem const & item, std::string 
 	cloud.resize(height * width);
 
 	// Copy data in point cloud (and convert milimeters in meters)
+	omp_set_num_threads(omp_get_num_threads());
+	#pragma omp parallel for
 	for (size_t i = 0; i < point_list.size (); i += 3) {
 		cloud.points[i / 3].x = point_list[i] / 1000.0;
 		cloud.points[i / 3].y = point_list[i + 1] / 1000.0;
